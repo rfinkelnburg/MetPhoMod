@@ -1,0 +1,364 @@
+# RACM - Mechanismus
+
+REACTIONS
+
+units(molec/cm3, sec);
+
+# Photodissotiationskonstanten
+
+NO2		= NO + O3P 				photodiss(1.45e-2, -0.4);
+O3		= O1D					photodiss(1.48e-4, -1.65);
+O3		= O3P					photodiss(1.23e-3, -0.6);
+HONO		= NO + HO				photodiss(2.8e-3, -0.45);
+HNO3		= NO2 + HO				photodiss(3.e-6, -1.25);
+HNO4		= 0.65 NO2 + 0.35 NO3 + 0.35 HO +
+		  0.65 HO2				photodiss(1.347e-4,-0.6024);
+NO3		= NO					photodiss(3.527e-2, -0.08097);
+NO3		= NO2 + O3P				photodiss(8.939e-2, -0.05917);
+H2O2		= 2 HO					photodiss(2.2e-5, -0.75);
+HCHO		= CO + H2				photodiss(6.65e-5, -0.6);
+HCHO		= CO + 2 HO2				photodiss(5.4e-5, -0.79);
+ALD		= CO + HO2 + MO2			photodiss(1.35e-5, -0.94);
+OP1		= HO + HO2 + HCHO			photodiss(2.259e-5, -0.9);
+OP2		= HO + HO2 + ALD			photodiss(2.259e-5, -0.9);
+PAA		= HO + MO2				photodiss(6.4487e-6, -0.9);
+KET		= ETHP + ACO3				photodiss(2.28e-6, -0.977);
+GLY		= 1.87 CO + 1.87 H2 + 0.13 HCHO		photodiss(1.635e-4, -0.79);
+GLY		= 1.55 CO + 0.80 HO2 + 0.45 HCHO	photodiss(5.609e-5, -0.79);
+MGLY		= CO + HO2 + ACO3			photodiss(2.617e-4, -0.79);
+DCB		= HO2 + TCO3				photodiss(1.2144e-3, -0.79);
+ONIT		= NO2 + HO2 + 0.2 ALD +
+		  0.80 KET				photodiss(6.086e-6, -0.79);
+MACR		= CO + HO2 + HCHO +
+		  ACO3					photodiss(3.730e-6, -0.79);
+HKET		= HO2 + HCHO + ACO3			photodiss(1.871e-6, -0.79);
+
+# thermische Reaktionen
+
+O3P + O2	= O3					special("K = M * 6.e-34 * pow(T/300., -2.3)");
+O3 + O3P	=					thermal(8.E-12, 2060.);
+O1D + N2	= O3P + N2				thermal(1.80E-11, -110.);
+O1D + O2	= O3P + O2				thermal(3.20E-11, -70.);
+O1D + H2O	= 2 HO					thermal(2.20E-10, 0.);
+O3 + HO		= HO2					thermal(1.60E-12, 940.);
+O3 + HO2	= HO					thermal(1.10E-14, 500.);
+HO + HO2	=					thermal(4.80E-11, -250.);
+H2O2 + HO	= HO2					thermal(2.90E-12, 160.);
+2 HO2		= H2O2					special("K = 2.3e-13*exp(600./T) + 1.7e-33*M*exp(1000./T)");
+2 HO2 + H2O	= H2O2					special("K = 3.22e-34*exp(2800./T) + 2.38e-54*M*exp(3200./T)");
+NO + O3P	= NO2					troe(9.E-32, 1.5, 3E-11, 0.);
+NO2 + O3P	= NO					thermal(6.50E-12, -120.0);
+NO2 + O3P	= NO3					troe(9.E-32, 2.0, 2.20E-11, 0.);
+NO + HO		= HONO					troe(7.E-31, 2.6, 1.50E-11, 0.5);
+# NO2 + HO	= HNO3					troe(2.60E-30, 3.2, 2.40E-11, 1.3);
+NO2 + HO	= HNO3					troe(1.53E-30, 3.2, 2.65E-11, 1.3);
+   # Aenderung nach Donahue, J.G.R. 102 D5 1997.
+NO3 + HO	= NO2 + HO2				thermal(2.20E-11, 0.0);
+NO + HO2	= NO2 + HO				thermal(3.70E-12, -250.0);
+NO2 + HO2	= HNO4					troe(1.80E-31, 3.2, 4.70E-12, 1.4);
+HNO4		= NO2 + HO2				troe-equil(1.80E-31, 3.2, 4.70E-12, 1.4, 4.76e26, 10900.);
+NO3 + HO2	= 0.70 NO2 + 0.30 HNO3 + 0.70 HO	thermal(3.50E-12, 0.0);
+HONO + HO	= NO2					thermal(1.80E-11, 390.0);
+HNO3 + HO	= NO3
+	special("k1=7.2e-15*exp(785./T); k2=4.1e-16*exp(1440./T); k3=1.9e-33*exp(725./T)*M; K = k1+k3/(1.+k3/k2)");
+HNO4 + HO	= NO2					thermal(1.30E-12, -380.0);
+O3 + NO		= NO2					thermal(2E-12, 1400.0);
+O3 + NO2	= NO3					thermal(1.20E-13, 2450.0);
+2 NO + O2	= 2 NO2					thermal(3.30E-39, -530.0);
+NO + NO3	= 2 NO2					thermal(1.50E-11, -170.0);
+NO2 + NO3	= NO + NO2				thermal(4.50E-14, 1260.0);
+NO2 + NO3	= N2O5					troe(2.20E-30, 3.9, 1.50E-12, 0.7);
+N2O5		= NO2 + NO3				troe-equil(2.20E-30, 3.9, 1.50E-12, 0.7, 3.7E26, 11000.);
+2 NO3		= 2 NO2					thermal(8.50E-13, 2450.);
+H2 + HO		= HO2					thermal(5.50E-12, 2000.);
+SO2 + HO	= SULF + HO2				troe(3E-31, 3.3, 1.50E-12, 0.0);
+CO + HO		= HO2					special("K = 1.5e-13*(1.+2.439e-20*M)");
+HO + CH4	= MO2					thermal-T2(7.44E-18, 1361.0);
+HO + ETH	= ETHP					thermal-T2(1.51E-17, 492.0);
+HO + HC3	= 0.04 CO + 0.04 HO + 0.38 HO2
+		 + 0.01 HCHO + 0.34 ALD + 0.04 GLY
+		 + 0.04 ORA1 + 0.58 HC3P		thermal(5.31E-12, 260.0);
+HO + HC5	= 0.25 HO2 + 0.25 KET + 0.75 HC5P	thermal(8.02E-12, 155.0);
+HO + HC8	= 0.05 HO2 + 0.03 ALD + 0.02 HKET
+		 + 0.95 HC8P				thermal(1.60E-11, 125.0);
+HO + OL2	= OL2P					thermal(1.96E-12, -438.0);
+HO + OLT	= OLTP					thermal(5.72E-12, -500.0);
+HO + OLI	= OLIP					thermal(1.33E-11, -500.0);
+HO + ISO	= ISOP					thermal(2.54E-11, -410.0);
+HO + TOL	= 0.10 HO2 + 0.90 ADDT + 0.10 XO2	thermal(1.81E-12, -355.0);
+HO + XYL	= 0.10 HO2 + 0.90 ADDX + 0.10 XO2	thermal(7.30E-12, -355.0);
+HO + CSL	= 0.05 HO2 + 0.10 PHO + 0.85 ADDC
+		 + 0.05 XO2				thermal(6E-11, 0.0);
+HO + HCHO	= CO + HO2				thermal(1.E-11, 0.0);
+HO + ALD	= ACO3					thermal(5.55E-12, -331.0);
+HO + KET	= KETP					thermal-T2( 5.68E-18, -92.0);
+HO + HKET	= HO2 + MGLY				thermal(3E-12, 0.0);
+HO + GLY	= 2 CO + HO2				thermal(1.14E-11, 0.0);
+HO + MGLY	= CO + ACO3				thermal(1.72E-11, 0.0);
+HO + MACR	= 0.41 CO + 0.49 HO2 + 0.08 HCHO
+		 + 0.08 MGLY + 0.41 HKET + 0.51 TCO3
+		 + 0.49 XO2				thermal(1.86E-11, -175.0);
+HO + DCB	= 0.50 HO2 + 0.15 GLY + 0.15 MGLY
+		 + 0.35 UDD + 0.50 TCO3 + 0.50 XO2	thermal(2.80E-11, -175.0);
+HO + UDD	= HO2 + 0.88 ALD + 0.12 KET		thermal(2.70E-10, 0.0);
+HO + OP1	= 0.35 HO + 0.35 HCHO + 0.65 MO2	thermal(2.93E-12, -190.0);
+HO + OP2	= 0.49 HO + 0.08 ALD + 0.41 KET
+		 + 0.44 HC3P + 0.07 XO2			thermal(3.40E-12, -190.0);
+HO + PAA	= 0.35 HO2 + 0.35 HCHO + 0.65 ACO3
+		 + 0.35 XO2				thermal(2.93E-12, -190.0);
+HO + PAN	= NO3 + HCHO + XO2			thermal(4E-14, 0.0);
+HO + TPAN	= 0.60 NO3 + 0.40 HO2 + 0.60 HKET
+		 + 0.40 PAN + XO2 + 0.40 HCHO		thermal(3.25E-13, -500.0);
+HO + ONIT	= NO2 + HC3P				thermal(5.31E-12, 260.0);
+NO3 + HCHO	= HNO3 + CO + HO2			thermal(3.40E-13, 1900.0);
+NO3 + ALD	= HNO3 + ACO3				thermal(1.40E-12, 1900.0);
+NO3 + GLY	= HNO3 + 2 CO + HO2			thermal(2.90E-12, 1900.0);
+NO3 + MGLY	= HNO3 + CO + ACO3			thermal(1.40E-12, 1900.0);
+NO3 + MACR	= 0.20 HNO3 + 0.80 CO + 0.20 TCO3
+		 + 0.80 OLNN				thermal(8.27E-15, 150.0);
+NO3 + DCB	= 0.50 NO2 + 0.50 HNO3 + 0.50 HO2
+		 + 0.25 ALD + 0.03 KET + 0.25 GLY
+		 + 0.25 MGLY + 0.50 TCO3 + 0.50 XO2	thermal(2.87E-13, 1000.0);
+NO3 + CSL	= HNO3 + PHO				thermal(2.20E-11, 0.0);
+NO3 + OL2	= 0.80 OLNN + 0.20 OLND			thermal-T2(4.88E-18, 2282.0);
+NO3 + OLT	= 0.43 OLNN + 0.57 OLND			thermal(1.79E-13, 450.0);
+NO3 + OLI	= 0.11 OLNN + 0.89 OLND			thermal(8.64E-13, -450.0);
+NO3 + ISO	= 0.90 MACR + 0.90 OLNN + 0.10 OLND	thermal(4E-12, 446.0);
+NO3 + TPAN	= 0.40 NO2 + 0.60 NO3 + 0.40 HCHO
+		 + 0.60 ONIT + 0.40 PAN + XO2		thermal(2.20E-14, 500.0);
+O3 + OL2	= 0.43 CO + 0.13 H2 + 0.12 HO
+		 + 0.26 HO2 + HCHO + 0.37 ORA1		thermal(9.14E-15, 2580.0);
+O3 + OLT	= 0.01 H2O2 + 0.37 CO + 0.05 H2
+		 + 0.40 HO + 0.25 HO2 + 0.06 CH4
+		 + 0.03 ETH + 0.64 HCHO + 0.44 ALD
+		 + 0.03 KET + 0.14 ORA1 + 0.10 ORA2
+		 + 0.19 MO2 + 0.10 ETHP + 0.03 KETP	thermal(4.33E-15, 1800.0);
+O3 + OLI	= 0.01 H2O2 + 0.30 CO + 0.63 HO
+		 + 0.22 HO2 + 0.07 CH4 + 0.06 ETH
+		 + 0.02 HCHO + 0.99 ALD + 0.16 KET
+		 + 0.14 ORA2 + 0.23 MO2 + 0.18 ETHP
+		 + 0.12 KETP				thermal(4.40E-15, 845.0);
+O3 + ISO	= 1 H2O2 + 0.36 CO + 0.05 H2
+		 + 0.09 O3P + 0.28 HO + 0.30 HO2
+		 + 0.35 OLT + 0.90 HCHO + 0.39 MACR
+		 + 0.15 ORA1 + 0.03 MO2 + 0.15 ACO3
+		 + 0.02 KETP
+		 + 0.13 XO2				thermal(7.86E-15, 1913.0);
+O3 + MACR	= 0.54 CO + 0.08 H2 + 0.07 HO
+		 + 0.29 HO2 + 0.40 HCHO + 0.60 MGLY
+		 + 0.13 OP2 + 0.22 ORA1 + 0.13 ORA2
+		 + 0.13 ACO3				thermal(1.36E-15, 2112.0);
+O3 + DCB	= 0.76 CO + 0.18 HO + 0.40 HO2
+		 + 0.05 ALD + 0.50 GLY + 0.54 MGLY
+		 + 0.11 PAA + 0.11 ORA1 + 0.17 ORA2
+		 + 0.28 ACO3				thermal(2E-18, 0.0);
+O3 + TPAN	= 0.70 NO2 + 0.13 CO + 0.04 H2
+		 + 0.04 HO + 0.08 HO2 + 0.70 HCHO
+		 + 0.30 PAN + 0.11 ORA1 + 0.70 ACO3	thermal(2.46E-15, 1700.0);
+NO2 + PHO	= 0.10 CSL + ONIT			thermal(2E-11, 0.0);
+HO2 + PHO	= CSL					thermal(1.E-11, 0.0);
+NO2 + ADDT	= HONO + CSL				thermal(3.60E-11, 0.0);
+ADDT + O2	= 0.02 HO2 + 0.02 CSL + 0.98 TOLP	thermal(1.66E-17, -1044.0);
+O3 + ADDT	= HO + CSL				thermal(5E-11, 0.0);
+NO2 + ADDX	= HONO + CSL				thermal(3.60E-11, 0.0);
+ADDX + O2	= 0.02 HO2 + 0.02 CSL + 0.98 XYLP	thermal(1.66E-17, -1044.0);
+O3 + ADDX	= HO + CSL				thermal(1.E-11, 0.0);
+NO2 + ADDC	= HONO + CSL				thermal(3.60E-11, 0.0);
+ADDC + O2	= 0.02 HO2 + 0.02 CSL + 0.98 CSLP	thermal(1.66E-17, -1044.0);
+O3 + ADDC	= HO + CSL				thermal(5E-11, 0.0);
+NO2 + ACO3	= PAN					troe(9.70E-29, 5.6, 9.30E-12, 1.5);
+PAN		= NO2 + ACO3				troe-equil(9.70E-29, 5.6, 9.30E-12, 1.5, 1.16e28, 13954.);
+NO2 + TCO3	= TPAN					troe(9.70E-29, 5.6, 9.30E-12, 1.5);
+TPAN		= NO2 + TCO3				troe-equil(9.70E-29, 5.6, 9.30E-12, 1.5, 1.16e28, 13954.);
+NO + MO2	= NO2 + HO2 + HCHO			thermal(4.20E-12, -180.0);
+NO + ETHP	= NO2 + HO2 + ALD			thermal(8.70E-12, 0.0);
+NO + HC3P	= 0.94 NO2 + 0.74 HO2 + 0.05 HCHO
+		 + 0.23 ALD + 0.62 KET + 0.06 GLY
+		 + 0.06 ONIT + 0.15 MO2 + 0.05 ETHP
+		 + 0.05 XO2				thermal(4E-12, 0.0);
+NO + HC5P	= 0.88 NO2 + 0.60 HO2 + 0.02 HCHO
+		 + 0.21 ALD + 0.72 KET + 0.12 ONIT
+		 + 0.03 MO2 + 0.25 ETHP + 0.33 XO2	thermal(4E-12, 0.0);
+NO + HC8P	= 0.74 NO2 + 0.61 HO2 + 0.15 ALD
+		 + 0.64 KET + 0.26 ONIT + 0.13 ETHP
+		 + 0.42 XO2				thermal(4E-12, 0.0);
+NO + OL2P	= NO2 + HO2 + 1.60 HCHO
+		 + 0.20 ALD				thermal(9E-12, 0.0);
+NO + OLTP	= NO2 + HO2 + HCHO
+		 + 0.94 ALD + 0.06 KET			thermal(4E-12, 0.0);
+NO + OLIP	= NO2 + HO2 + 1.71 ALD
+		 + 0.29 KET				thermal(4E-12, 0.0);
+NO + ISOP	= 0.85 NO2 + 0.85 HO2 + 0.35 OLT
+		 + 0.61 HCHO + 0.45 MACR + 0.15 ONIT	thermal(4E-12, 0.0);
+NO + ACO3	= NO2 + MO2				thermal(2E-11, 0.0);
+NO + TCO3	= NO2 + HCHO + ACO3			thermal(2E-11, 0.0);
+NO + TOLP	= 0.95 NO2 + 0.95 HO2 + 1.20 GLY
+		 + 0.65 MGLY + 0.50 DCB + 0.05 ONIT	thermal(4E-12, 0.0);
+NO + XYLP	= 0.95 NO2 + 0.95 HO2 + 0.35 GLY
+		 + 0.60 MGLY + 0.95 DCB + 0.05 ONIT	thermal(4E-12, 0.0);
+NO + CSLP	= NO2 + HO2 + GLY + MGLY		thermal(4E-12, 0.0);
+NO + KETP	= NO2 + 0.77 HO2 + 0.46 ALD
+		 + 0.54 MGLY + 0.23 ACO3 + 0.16 XO2	thermal(4E-12, 0.0);
+NO + OLNN	= NO2 + HO2 + ONIT			thermal(4E-12, 0.0);
+NO + OLND	= 2 NO2 + 0.28 HCHO + 1.24 ALD
+		 + 0.47 KET				thermal(4E-12, 0.0);
+HO2 + MO2	= OP1					thermal(3.80E-13, -800.0);
+HO2 + ETHP	= OP2					thermal(7.50E-13, -700.0);
+HO2 + HC3P	= OP2					thermal(1.66E-13, -1300.0);
+HO2 + HC5P	= OP2					thermal(1.66E-13, -1300.0);
+HO2 + HC8P	= OP2					thermal(1.66E-13, -1300.0);
+HO2 + OL2P	= OP2					thermal(1.90E-13, -1300.0);
+HO2 + OLTP	= OP2					thermal(1.66E-13, -1300.0);
+HO2 + OLIP	= OP2					thermal(1.66E-13, -1300.0);
+HO2 + ISOP	= OP2					thermal(1.28E-13, -1300.0);
+HO2 + KETP	= OP2					thermal(1.15E-13, -1300.0);
+HO2 + ACO3	= PAA					thermal(1.15E-12, -550.0);
+HO2 + ACO3	= O3 + ORA2				thermal(3.86E-16, -2640.0);
+HO2 + TOLP	= OP2					thermal(3.75E-13, -980.0);
+HO2 + XYLP	= OP2					thermal(3.75E-13, -980.0);
+HO2 + CSLP	= OP2					thermal(3.75E-13, -980.0);
+HO2 + TCO3	= OP2					thermal(1.15E-12, -550.0);
+HO2 + TCO3	= O3 + ORA2				thermal(3.86E-16, -2640.0);
+HO2 + OLNN	= ONIT					thermal(1.66E-13, -1300.0);
+HO2 + OLND	= ONIT					thermal(1.66E-13, -1300.0);
+2 MO2		= 0.66 HO2 + 1.33 HCHO			thermal(9.10E-14, -416.0);
+MO2 + ETHP	= HO2 + 0.75 HCHO + 0.75 ALD		thermal(1.18E-13, -158.0);
+MO2 + HC3P	= 0.99 HO2 + 0.81 HCHO + 0.58 ALD
+		 + 0.02 KET + 0.12 GLY + 0.01 MGLY
+		 + 0.01 MO2 + 0.09 XO2			thermal(9.46E-14, -431.0);
+MO2 + HC5P	= 0.95 HO2 + 0.83 HCHO + 0.52 ALD
+		 + 0.24 KET + 0.05 MO2 + 0.01 ETHP
+		 + 0.25 XO2				thermal(9.99E-14, -467.0);
+MO2 + HC8P	= 0.99 HO2 + 0.75 HCHO + 0.41 ALD
+		 + 0.42 KET + 0.01 ETHP + 0.32 XO2	thermal(4.34E-14, -633.0);
+MO2 + OL2P	= HO2 + 1.55 HCHO + 0.35 ALD		thermal(1.71E-13, -708.0);
+MO2 + OLTP	= HO2 + 1.25 HCHO + 0.67 ALD
+		 + 0.08 KET				thermal(1.46E-13, -708.0);
+MO2 + OLIP	= HO2 + 0.76 HCHO + 0.93 ALD
+		 + 0.31 KET				thermal(9.18E-14, -708.0);
+MO2 + ISOP	= HO2 + 0.37 OLT + 0.08 OLI
+		 + 1.09 HCHO + 0.55 MACR		thermal(1.36E-13, -708.0);
+MO2 + KETP	= 0.88 HO2 + 0.75 HCHO + 0.30 ALD
+		 + 0.30 KET + 0.40 MGLY + 0.12 ACO3
+		 + 0.08 XO2				thermal(6.91E-13, -508.0);
+MO2 + ACO3	= HO2 + HCHO + MO2			thermal(3.21E-11, 440.0);
+MO2 + ACO3	= HCHO + ORA2				thermal(2.68E-16, -2510.0);
+MO2 + TOLP	= HO2 + HCHO + 0.65 GLY
+		 + 0.35 MGLY + DCB			thermal(1.32E-13, -708.0);
+MO2 + XYLP	= HO2 + HCHO + 0.37 GLY
+		 + 0.63 MGLY + DCB			thermal(1.32E-13, -708.0);
+MO2 + CSLP	= 2 HO2 + HCHO + GLY
+		 + MGLY					thermal(1.32E-13, -708.0);
+MO2 + TCO3	= HO2 + 2 HCHO + ACO3			thermal(3.21E-11, 440.0);
+MO2 + TCO3	= HCHO + ORA2				thermal(2.68E-16, -2510.0);
+MO2 + OLNN	= HO2 + 0.75 HCHO + ONIT		thermal(1.60E-13, -708.0);
+MO2 + OLND	= 0.50 NO2 + 0.50 HO2 + 0.96 HCHO
+		 + 0.64 ALD + 0.15 KET + 0.50 ONIT	thermal(9.68E-14, -708.0);
+ETHP + ACO3	= 0.50 HO2 + ALD + 0.50 ORA2
+		 + 0.50 MO2				thermal(1.03E-12, -211.0);
+HC3P + ACO3	= 0.49 HO2 + 0.09 HCHO + 0.72 ALD
+		 + 0.13 KET + 0.10 GLY + 4 MGLY
+		 + 0.50 ORA2 + 0.51 MO2 + 0.01 ETHP
+		 + 0.07 XO2				thermal(6.90E-13, -460.0);
+HC5P + ACO3	= 0.44 HO2 + 0.68 ALD + 0.33 KET
+		 + 0.50 ORA2 + 0.55 MO2 + 0.02 ETHP
+		 + 0.24 XO2 + 0.08 HCHO			thermal(5.59E-13, -522.0);
+HC8P + ACO3	= 0.49 HO2 + 0.50 ALD + 0.58 KET
+		 + 0.50 ORA2 + 0.51 MO2 + 0.02 ETHP
+		 + 0.32 XO2				thermal(2.47E-13, -683.0);
+OL2P + ACO3	= 0.50 HO2 + 0.80 HCHO + 0.60 ALD
+		 + 0.50 ORA2 + 0.50 MO2			thermal(9.48E-13, -765.0);
+OLTP + ACO3	= 0.50 HO2 + 0.50 HCHO + 0.86 ALD
+		 + 0.14 KET + 0.50 ORA2 + 0.50 MO2	thermal(8.11E-13, -765.0);
+OLIP + ACO3	= 0.51 HO2 + 0.94 ALD + 0.57 KET
+		 + 0.49 ORA2 + 0.51 MO2			thermal(5.09E-13, -765.0);
+ISOP + ACO3	= 0.51 HO2 + 0.23 OLT + 0.34 HCHO
+		 + 0.77 MACR + 0.49 ORA2 + 0.51 MO2	thermal(7.60E-13, -765.0);
+ACO3 + KETP	= 0.38 HO2 + 0.35 ALD + 0.11 KET
+		 + 0.54 MGLY + 0.50 ORA2 + 0.50 MO2
+		 + 0.08 XO2 + 0.12 ACO3			thermal(7.51E-13, -565.0);
+2 ACO3		= 2 MO2					thermal(2.80E-13, -530.0);
+TOLP + ACO3	= HO2 + 0.65 GLY + 0.35 MGLY
+		 + DCB + MO2				thermal(7.40E-13, -765.0);
+XYLP + ACO3	= HO2 + 0.37 GLY + 0.63 MGLY
+		 + DCB + MO2				thermal(7.40E-13, -765.0);
+CSLP + ACO3	= HO2 + GLY + MGLY + MO2		thermal(7.40E-13, -765.0);
+ACO3 + TCO3	= HCHO + MO2 + ACO3			thermal(2.80E-13, -530.0);
+ACO3 + OLNN	= 0.50 HO2 + ONIT + 0.50 ORA2
+		 + 0.50 MO2				thermal(8.85E-13, -765.0);
+ACO3 + OLND	= 0.21 HCHO + 0.54 ALD + 0.17 KET 
+		 + 0.48 ONIT + 0.48 ORA2 + 0.52 MO2 
+		 + 0.52 NO2				thermal(5.37E-13, -765.0);
+2 OLNN		= HO2 + 2 ONIT				thermal(7E-14, -1000.0);
+OLNN + OLND	= 0.50 NO2 + 0.50 HO2 + 0.20 HCHO
+		 + 0.64 ALD + 0.15 KET + 1.50 ONIT	thermal(4.25E-14, -1000.0);
+2 OLND		= NO2 + 0.50 HCHO + 1.21 ALD
+		 + 0.29 KET + ONIT			thermal(2.96E-14, -1000.0);
+NO3 + MO2	= NO2 + HO2 + HCHO			thermal(1.20E-12, 0.0);
+NO3 + ETHP	= NO2 + HO2 + ALD			thermal(1.20E-12, 0.0);
+NO3 + HC3P	= NO2 + 0.79 HO2 + 0.05 HCHO
+		 + 0.24 ALD + 0.67 KET + 0.06 GLY
+		 + 0.16 MO2 + 0.05 ETHP + 0.05 XO2	thermal(1.20E-12, 0.0);
+NO3 + HC5P	= NO2 + 0.70 HO2 + 0.02 HCHO
+		 + 0.24 ALD + 0.83 KET + 0.04 MO2
+		 + 0.26 ETHP + 0.39 XO2			thermal(1.20E-12, 0.0);
+NO3 + HC8P	= NO2 + 0.85 HO2 + 0.19 ALD
+		 + 0.88 KET + 0.15 ETHP + 0.59 XO2	thermal(1.20E-12, 0.0);
+NO3 + OL2P	= NO2 + HO2 + 1.60 HCHO
+		 + 0.20 ALD				thermal(1.20E-12, 0.0);
+NO3 + OLTP	= NO2 + HO2 + HCHO
+		 + 0.94 ALD + 0.06 KET			thermal(1.20E-12, 0.0);
+NO3 + OLIP	= NO2 + HO2 + 1.71 ALD
+		 + 0.29 KET				thermal(1.20E-12, 0.0);
+NO3 + ISOP	= NO2 + HO2 + 0.40 OLT
+		 + 0.69 HCHO + 0.60 MACR		thermal(1.20E-12, 0.0);
+NO3 + ACO3	= NO2 + MO2				thermal(4E-12, 0.0);
+NO3 + TCO3	= NO2 + HCHO + ACO3			thermal(4E-12, 0.0);
+NO3 + TOLP	= NO2 + HO2 + 1.30 GLY
+		 + 0.70 MGLY + 0.50 DCB			thermal(1.20E-12, 0.0);
+NO3 + XYLP	= NO2 + HO2 + 0.74 GLY
+		 + 1.26 MGLY + DCB			thermal(1.20E-12, 0.0);
+NO3 + CSLP	= NO2 + HO2 + GLY
+		 + MGLY					thermal(1.20E-12, 0.0);
+NO3 + KETP	= NO2 + 0.77 HO2 + 0.46 ALD
+		 + 0.54 MGLY + 0.23 ACO3 + 0.16 XO2	thermal(1.20E-12, 0.0);
+NO3 + OLNN	= NO2 + HO2 + ONIT			thermal(1.20E-12, 0.0);
+NO3 + OLND	= 2 NO2 + 0.28 HCHO + 1.24 ALD
+		 + 0.47 KET				thermal(1.20E-12, 0.0);
+HO2 + XO2	= OP2					thermal(1.66E-13, -1300.0);
+MO2 + XO2	= HO2 + HCHO				thermal(6E-15, -1510.0);
+ACO3 + XO2	= MO2					thermal(3.40E-14, -1560.0);
+2 XO2		=					thermal(7.13E-17, -2950.0);
+NO + XO2	= NO2					thermal(4E-12, 0.0);
+NO3 + XO2	= NO2					thermal(1.20E-12, 0.0);
+HO + API	= APIP					thermal(5.45E-11, 0.0);
+NO3 + API	= 0.10 OLNN + 0.90 OLND			thermal(6.16E-12, 0.0);
+O3 + API	= 0.02 H2O2 + 0.14 CO + 0.85 HO
+		 + 0.10 HO2 + 0.65 ALD + 0.53 KET
+		 + 0.20 ETHP + 0.42 KETP		thermal(8.69E-17, 0.0);
+NO + APIP	= 0.80 NO2 + 0.80 HO2 + 0.80 ALD
+		 + 0.80 KET + 0.20 ONIT			thermal(4E-12, 0.0);
+NO3 + APIP	= NO2 + HO2 + ALD
+		 + KET					thermal(1.20E-12, 0.0);
+HO2 + APIP	= OP2					thermal(1.50E-11, 0.0);
+MO2 + APIP	= 2 HO2 + HCHO + ALD
+		 + KET					thermal(3.56E-14, -708.0);
+APIP + ACO3	= HO2 + ALD + KET
+		 + MO2					thermal(7.40E-13, -765.0);
+HO + LIM	= LIMP					thermal(1.70E-10, 0.0);
+NO3 + LIM	= 0.13 OLNN + 0.87 OLND			thermal(1.22E-11, 0.0);
+O3 + LIM	= 0.02 H2O2 + 0.14 CO + 0.85 HO
+		 + 0.10 HO2 + 0.46 OLT + 0.04 HCHO
+		 + 0.79 MACR + 0.01 ORA1 + 0.08 ORA2
+		 + 0.16 ETHP + 0.42 KETP		thermal(2E-16, 0.0);
+NO + LIMP	= 0.65 NO2 + 0.65 HO2 + 0.25 OLI
+		 + 0.25 HCHO + 0.40 MACR + 0.35 ONIT	thermal(4E-12, 0.0);
+NO3 + LIMP	= NO2 + HO2 + 0.40 OLI
+		 + 0.40 HCHO + 0.60 MACR		thermal(1.20E-12, 0.0);
+HO2 + LIMP	= OP2					thermal(1.50E-11, 0.0);
+MO2 + LIMP	= 2 HO2 + 0.40 OLI + 1.40 HCHO
+		 + 0.60 MACR				thermal(3.56E-14, -708.0);
+LIMP + ACO3	= HO2 + 0.40 OLI + 0.40 HCHO
+		 + 0.60 MACR + MO2			thermal(7.40E-13, -765.0);
+
+END

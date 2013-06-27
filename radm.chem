@@ -1,0 +1,107 @@
+#
+# Der RADM-Mechanismus (Stockwell, 1987)
+#
+
+REACTIONS
+
+units(sec);   # Konstanten aus HARWELL
+NO2                  = O3 + NO                         photodiss(1.45e-2, -0.4) ;
+O3                   = OD                              photodiss(1.48e-4, -1.65) ; # Korrigiert nach J. Dommen
+# O3		     = OD			       photodiss(2.e-4, -1.4);
+HONO                 = HO + NO                         photodiss(2.8e-3, -0.45) ;
+NO3                  = NO       		       photodiss(3.527e-2, -0.08097) ;
+NO3		     = NO2 + O3			       photodiss(8.939e-2, -0.05917) ;
+H2O2                 = 2 HO                            photodiss(2.2e-5, -0.75) ;
+HCHO                 = CO                              photodiss(6.65e-5, -0.6) ;
+HCHO                 = 2 HO2 + CO                      photodiss(5.4e-5, -0.79) ;
+ALD                  = MO2 + HO2 + CO                  photodiss(1.35e-5, -0.94) ;
+OP                   = HCHO + HO2 + HO                 photodiss(2.259e-5, -0.9) ;
+OP                   = ALD + HO2 + HO                  photodiss(2.259e-5, -0.9) ;
+PAA                  = MO2 + HO                        photodiss(6.4487e-6, -0.9) ;
+units(ppm, min);   # Konstanten aus RADM I
+refs(press=101325,temp=298.15);
+OD + M               = O3                              thermal(4.29e4, 0.) ;
+OD + H2O             = 2 HO                            thermal(3.25e5, 0.) ;
+O3 + NO              = NO2                             thermal(2665., 1400) ;   # Korrigiert nach Harwell
+H2O2 + HO            = HO2                             thermal(2510., 187.) ;
+2 NO + O2            = 2 NO2                           thermal(7.28e-10, -530.) ;
+O3 + NO2             = NO3                             thermal(177., 2450.) ;   # Korrigiert nach Harwell
+NO3 + NO             = 2 NO2                           thermal(2.96e4, 0.) ;
+NO3 + NO2            = N2O5                            thermal(1770., 60.) ;
+N2O5                 = NO2 + NO3                       thermal(1.92e16, 10840.) ;   # Korrigiert nach Harwell
+HO + HNO3            = NO3                             thermal(192., 0.) ;
+HO + SO2             = SULF + HO2                      thermal(1600., 0.) ;
+CO + HO              = HO2                             thermal(355., 0.) ;
+CH4 + HO             = MO2                             thermal(3545., 1.71e3) ;   # Korrigiert nach Harwell
+ETH + HO             = HCP                             thermal(28060., 1260.) ;   # Korrigiert nach Harwell
+HC + HO              = HCP                             thermal(3840., 560.) ;
+FASTHC + HO	     = HCP			       thermal(97000., 560.);
+OL2 + HO             = OL2P                            thermal(1.18e4, -8.39) ;
+OL3 + HO             = OL3P                            thermal(4.29e4, -13.3) ;
+OL4 + HO             = OL4P                            thermal(1.03e5, -542.) ;
+TOL + HO             = 2 HCP                           thermal(3101., -322.) ;  # aus RADM II
+XYL + HO             = 2 HCP                           thermal(27913., -116.) ; # aus RADM II
+HCHO + HO            = HO2 + CO                        thermal(1.48e4, 0.) ;
+ALD + HO             = ACO3                            thermal(2.36e4, -260.) ;
+HCHO + NO3           = HO2 + HNO3 + CO                 thermal(0.931, 0.) ;
+ALD + NO3            = ACO3 + HNO3                     thermal(3.7, 0.) ;
+ACO3 + NO2           = PAN                             thermal(8870., 0.) ;   # Korrigiert nach Harwell
+PAN                  = ACO3 + NO2                      thermal(1.17e18, 13330.) ;
+MO2 + NO             = HCHO + HO2 + NO2                thermal(1.12e4, -180.) ;
+HCP + NO             = ALD + HO2 + NO2                 thermal(1.03e4, -180) ;
+HCP + NO             = ONIT                            thermal(828., -180) ;
+OL2P + NO            = 2 HCHO + HO2 + NO2              thermal(1.12e4, -180) ;
+OL3P + NO            = 2 ALD + 2 HCHO                  thermal(5390., -180) ;
+OL3P + NO            = 2 HO2 + 2 NO2                   thermal(5390., -180) ;
+OL3P + NO            = ONIT                            thermal(429., -180) ;
+OL4P + NO            = HO2 + 2 ALD + NO2               thermal(1.03e4, -180) ;
+OL4P + NO            = ONIT                            thermal(828., -180) ;
+ACO3 + NO            = MO2 + NO2                       thermal(1.42e4, 0.) ;
+HO2 + MO2            = OP                              thermal(2220., 0.) ;
+HO2 + HCP            = OP                              thermal(2220., 0.) ;
+HO2 + OL2P           = OP                              thermal(2220., 0.) ;
+HO2 + OL3P           = OP                              thermal(2220., 0.) ;
+HO2 + OL4P           = OP                              thermal(2220., 0.) ;
+HO2 + ACO3           = PAA                             thermal(2220., 0.) ;
+ACO3 + MO2           = HCHO + MO2 + HO2                thermal(2220., 0.) ;
+2 ACO3               = 2 MO2                           thermal(2220., 0.) ;
+OL2 + O3             = HCHO + 0.4 CRE1 + 0.42 CO +
+		       0.12 HO2                        thermal(17.72, 2633.) ;   # Korrigiert nach Harwell
+OL3 + O3             = 1.05 HCHO + 0.4 CRE2 + 0.12 CH4 +
+		       0.24 CO + 0.33 HO2 + 0.19 HO +
+		       0.43 MO2                        thermal(0.96, 2105.) ;   # Korrigiert nach Harwell
+OL3 + O3             = ALD + 0.4 CRE1 + 0.42 CO +
+		       0.12 HO2                        thermal(0.96, 2105.) ;   # Korrigiert nach Harwell
+OL4 + O3             = ALD + 0.4 CRE2 + 0.12 CH4 +
+		       0.24 CO + 0.33 HO2 + 0.19 HO +
+		       0.05 HCHO + 0.43 MO2            thermal(13.44, 1136.) ;   # Korrigiert nach Harwell
+CRE1 + NO            = HCHO + NO2                      thermal(1.03e4, -180.) ;
+CRE1 + H2O           = ORA1                            thermal(0.591, 0.) ;
+CRE1 + SO2           = SULF + HCHO                     thermal(1.03e4, 0.) ;
+CRE2 + NO            = ALD + NO2                       thermal(1.03e4, -180.) ;
+CRE2 + H2O           = ORA2                            thermal(0.591, 0.) ;
+CRE2 + SO2           = SULF + ALD                      thermal(1.03e4, 0.) ;
+
+units(molec/cm3, sec);
+
+O3 + HO              = HO2                             thermal(1.9e-12, 1000.) ;
+O3 + HO2             = HO                              thermal(1.4e-14, 600.) ;
+HO2 + NO             = NO2 + HO                        thermal(3.7e-12, -240.) ;
+HO2 + NO2            = HNO4                            thermal(1.7e-12, 0.) ;
+HNO4                 = HO2 + NO2                       thermal(6.8e13, 10200.) ;
+2 HO2                = H2O2                            thermal(2.2e-13, -600.) ;
+2 HO2 + M            = H2O2                            thermal(1.9e-33, -980.) ;  # Korrigiert nach Harwell
+2 HO2 + H2O	     = H2O2			       thermal(2.1e-38, -5800.) ;
+HONO + HO	     = NO2			       thermal(6.6e-12, 0.) ;
+NO3 + NO2            = NO + NO2                        thermal(2.3e-13, 1000.) ;   # Korrigiert nach Harwell
+HO + HO2	     = 				       thermal(1.e-10, 0.);    # aus Harwell
+NO + HO              = HONO                            thermal(4.e-12, 0.) ;
+HO + NO2             = HNO3                            thermal(1.5e-11, 0.) ;
+
+# Zusaetzliche Reaktionen aus RADM2
+
+PAA + HO	     = ACO3			       thermal(1.e-11, 0.) ;
+ONIT + HO	     = HCP + NO2		       thermal(1.55e-11, 540.) ;
+OP + HO		     = 0.5 HCP + 0.5 ALD + 0.5 HO      thermal(1.e-11, 0.);
+
+END
