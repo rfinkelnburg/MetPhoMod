@@ -44,14 +44,14 @@ void CalcTransilientMatrix(int ig, int jg, double tinc, Row *ttm, double *deltaz
   GroundParam *gr;
   Row relmass;
   gr = ground+ig*row+jg;
-  fa = gr->firstabove - 1;
+  fa = gr->firstabove;
   loc = fa*layer+ig*row+jg;
 /* Bestimme die Y(ij)-Werte, i!=j. (Stull p. 235)  */
   sum = 0;
-  for (i = nte = nz - fa; --i; )  {
+  for (i = nte = nz - fa; i--; )  {
     dzl = 0.;
-    for (j = i; --j; )  {
-      dzl += ldiff[j+fa+1];
+    for (j = i; j--; )  {
+      dzl += ldiff[j+fa];
       dUWIND = g[UWIND][i*layer+loc] - g[UWIND][j*layer+loc];
       dVWIND = g[VWIND][i*layer+loc] - g[VWIND][j*layer+loc];
       dTEMP  = g[TEMP][i*layer+loc] - g[TEMP][j*layer+loc];
@@ -62,20 +62,6 @@ void CalcTransilientMatrix(int ig, int jg, double tinc, Row *ttm, double *deltaz
     }
     sum += density[i+fa] * dzl;
   }
-/* Dasselbe in Bodennaehe. */
-  for (i = 1, dzl = level[fa+1] * 0.5; i < nte; i++)  {
-    dUWIND = g[UWIND][i*layer+loc] - gr->a[UWIND];
-    dVWIND = g[VWIND][i*layer+loc] - gr->a[VWIND];
-    dTEMP  = g[TEMP][i*layer+loc] - gr->a[TEMP];
-    ttm[i][0] = ttm[0][i] =
-        tinc * t0 / (dzl * dzl) *
-        (dUWIND*dUWIND + dVWIND*dVWIND - Grav*dzl*dTEMP/(gr->a[TEMP]*Rc)) -
-        Dy * tinc / t0;
-    if (i+1 < nte)  dzl += ldiff[fa+i+1];
-  }
-  sum += density[fa] * gr->z;
-/*  if (ig == 74 && jg == 37)
-    PrintTMatrix(nte, ttm, "Erste evaluation"); */
 /* Die Werte werden monoton steigend gemacht, und die Y(ii) Werte gerechnet. */
   for (i = nte; i--; )  {
     ttm[i][i] = 0.;
@@ -86,13 +72,9 @@ void CalcTransilientMatrix(int ig, int jg, double tinc, Row *ttm, double *deltaz
     }
     ttm[i][i] += Yref;
   }
-/*  if (ig == 74 && jg == 37)
-    PrintTMatrix(nte, ttm, "Monoton steigend");  */
 /* Berechne relative Massen */
-  deltaz[0] = 2. * gr->z / gr->slope.z;
-  for (i = 1; i < nte; i++)
-    deltaz[i] = 2. * level[i-1];
-  deltaz[1] -= deltaz[0];
+  for (i = 0; i < nte; i++)
+    deltaz[i] = 2. * level[i];
   sum = 0.5 * nte * nte / sum;
   for (i = nte; i--; )
     relmass[i] = deltaz[i] * density[i+fa] * sum;
@@ -126,11 +108,10 @@ void CalcTransilientExchange(int ig, int jg, Entity et, double *v, Row *ttm,
   double *p[100];
   int i, j, nte, loc;
   loc = ig*row+jg;
-  nte = nz - ground[loc].firstabove + 1;
+  nte = nz - ground[loc].firstabove;
   if (nte < 2)  return;
   for (i = nte; --i; )
     p[i] = v+i*layer+ig*row+jg;
-  p[0] = (et < SUBS ? &ground[loc].a[et] : &v[layer+loc]);
   for (i = nte; i--; )  {
     nv[i] = 0.;
     for (j = nte; j--; )
@@ -178,7 +159,7 @@ void CalcGroundTurbulence(double tinc)
 {
   int i, j, k, loc;
   GroundParam *gr;
-  double de, winddecay;
+  double de;
   Entity et;
   double h2;
   int xs, xe;
@@ -198,21 +179,13 @@ void CalcGroundTurbulence(double tinc)
     for (j = ny; --j; )  {
       gr = &ground[i*row+j];
       k = gr->firstabove;
-      h2 = 1. / gr->z;
-      winddecay = exp(gr->uw * tinc * h2);
-/*
-      if (zL > 0.)  {
-        h2 = 1. / (gr->z + level[k]);
-        loc = i*row+j+k*layer;
-        g[TEMP][loc] += tinc * gr->wtheta * h2;
-        g[HUMIDITY][loc] += tinc * gr->wq * h2;
-      }
-*/
-      gr->a[UWIND] *= gr->uw;
-      gr->a[VWIND] *= gr->vw;
-      gr->a[TEMP] += tinc * gr->wtheta * h2;
+      loc = k*layer + i*row + j;
+      h2 = 1. / level[k];
+      g[UWIND][loc] *= gr->uw;
+      g[VWIND][loc] *= gr->vw;
+      g[TEMP][loc] += tinc * gr->wtheta * h2;
       if (calcsoiltemp)  {
-	gr->a[HUMIDITY] += tinc * gr->wq * h2;
+	g[HUMIDITY][loc] += tinc * gr->wq * h2;
 	gr->X += tinc * (1. - gr->X - gr->r * gr->wq * Lc * density[k]) / 1000.;
 	if (gr->X > 1.)  gr->X = 1.;
 	if (gr->X < 0.)  gr->X = 0.;

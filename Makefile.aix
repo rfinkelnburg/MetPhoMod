@@ -44,8 +44,8 @@
 # USER Variables: change settings according to your local installation
 #
 # ***************************************************************************
-# Compiler: The C++-compiler to be used for compilation. The compiler must be
-# ANSI-C++ compliant.
+# Compiler: The C-compiler to be used for compilation. The compiler must be
+# ANSI-C compliant.
 CC=xlC -+
 #
 # for GNU-C
@@ -73,7 +73,7 @@ CCOPT=-O3 -qstrict -qarch=604 -qtune=604 -qflttrap=overflow:zerodivide:invalid
 #
 # ***************************************************************************
 # FOPT compiler optimization flags
-FOPT=-O3 -qtune=604
+FOPT=-O3 -qtune=604 -qflttrap=overflow:zerodivide:invalid
 #
 # ***************************************************************************
 # CCDEBUG       compiler debugging flags
@@ -81,11 +81,11 @@ CCDEBUG=-g -qfullpath
 #
 # ***************************************************************************
 # FDEBUG       compiler debugging flags
-FDEBUG=-g -qfullpath -qflttrap=overflow:zerodivide:invalid
+FDEBUG=-g -qfullpath
 #
 # ***************************************************************************
 # CFLAGS2  general C flags, which should always be called.
-CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DAIX -qfloat=nans -qflttrap=overflow:zerodivide:invalid:enable
+CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DAIX
 #
 # ***************************************************************************
 # compiler flags to be used in all versions
@@ -147,7 +147,7 @@ ARCH=AIX
 
 opt :
 	(cd mctwostream; \
-	$(MAKE) FFLAGS="$(FOPT)" CFLAGS="$(CCOPT) $(CFLAGS2)" GENFLAGS=$(GENFLAGS) OBJDIR=optm)
+	$(MAKE) FFLAGS="$(FOPT)" CFLAGS="$(CCOPT)" GENFLAGS=$(GENFLAGS) OBJDIR=optm)
 	$(MAKE) meteochem FFLAGS="$(FOPT)" CFLAGS="$(CCOPT)" \
 	   OBJDIR=optm STRIP=strip
 
@@ -160,7 +160,7 @@ optp :
 
 debug :
 	(cd mctwostream; \
-	$(MAKE) FFLAGS="$(FDEBUG)" CFLAGS="$(CCDEBUG) $(CFLAGS2)" GENFLAGS=$(GENFLAGS) OBJDIR=dbg)
+	$(MAKE) FFLAGS="$(FDEBUG)" CFLAGS="$(CCDEBUG)" GENFLAGS=$(GENFLAGS) OBJDIR=dbg)
 	$(MAKE) meteochem FFLAGS="$(FDEBUG)" CFLAGS="$(CCDEBUG)" OBJDIR=dbg STRIP="ls -l"
 
 debugp :
@@ -191,7 +191,7 @@ OBJS = $(OBJDIR)/mcmain.o $(OBJDIR)/mcglobal.o $(OBJDIR)/mcdynamics.o \
        $(OBJDIR)/mc_module.o $(OBJDIR)/mc_variable.o $(OBJDIR)/mc_section.o \
        $(OBJDIR)/mc_commands.o $(OBJDIR)/puffemit.o
 
-LIBS = mctwostream/$(OBJDIR)/libmctwostream.a
+LIBS = mctwostream/libmctwostream.a
 
 SRC = mcmain.c mcglobal.c mcdynamics.c mcparse.c mcpress.c mcdep.c \
       sunpos.c mcground.c mcfloat.c mcttt.c mcfilter.c mcemiss.c \
@@ -219,12 +219,12 @@ $(OBJDIR)/%.o : %.f
 	f77 -qextname -c $(FFLAGS) $(GENFLAGS) $*.f -o $@
 
 parallel : $(OBJS) $(OBJDIR)/mcparallel.o 
-	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJS) $(OBJDIR)/mcparallel.o -L$(NETCDFHOME)/lib -L$(PVM_ROOT)/lib/$(ARCH) \
+	$(CC) $(CFLAGS) $(OBJS) $(OBJDIR)/mcparallel.o -L$(NETCDFHOME)/lib -L$(PVM_ROOT)/lib/$(ARCH) \
 	    $(LIBS) $(PARLIBS) -o meteochem
 	$(STRIP) meteochem
 
 meteochem : $(OBJS) $(LIBS)
-	$(CC) $(CFLAGS) $(CFLAGS2) -bloadmap:loadmap $(OBJS) -L$(NETCDFHOME)/lib $(LIBS) $(SEQLIBS) -o meteochem
+	$(CC) $(CFLAGS) -bloadmap:loadmap $(OBJS) -L$(NETCDFHOME)/lib $(LIBS) $(SEQLIBS) -o meteochem
 	$(STRIP) meteochem
 
 mcinp.c : mcinp.l
@@ -236,8 +236,6 @@ mcsyntax.c mcsyntax.h : mcsyntax.y
 	rm y.tab.c
 	sed 's/yy/mci/g' y.tab.h > mcsyntax.h
 	rm y.tab.h
-
-$(OBJDIR)/mchelp.o : mcsyntax.incl
 
 mcsyntax.incl : mcsyntax.y
 	sed '1,/%%/d;/{/,/}$$/d;/%%/,$$d;/^$$/d;s/\;$$//;s/^/\"/;s/$$/\\n\"/' mcsyntax.y > mcsyntax.incl
@@ -307,7 +305,7 @@ $(OBJDIR)/mcparse.o: sunpos.h mcground.h mcgroundclasses.h mcpress.h
 $(OBJDIR)/mcparse.o: mcparse.h mc_group.hh mcemiss.h mcfilter.h mcdep.h
 $(OBJDIR)/mcparse.o: mchemparse.h mchem.h mcclouds.h mcnest.h mpdata.h
 $(OBJDIR)/mcparse.o: mcppm.h mcrely.h mc_module.hh mc_variable.hh
-$(OBJDIR)/mcparse.o: mc_section.hh mc_commands.hh
+$(OBJDIR)/mcparse.o: mc_section.hh mc_commands.hh mc_group.t
 $(OBJDIR)/mcpress.o: /usr/include/stddef.h /usr/include/standards.h
 $(OBJDIR)/mcpress.o: /usr/include/stdio.h /usr/include/va_list.h
 $(OBJDIR)/mcpress.o: /usr/include/sys/types.h /usr/include/sys/inttypes.h
@@ -366,9 +364,7 @@ $(OBJDIR)/mcfloat.o: /usr/include/locale.h /usr/include/sys/localedef31.h
 $(OBJDIR)/mcfloat.o: /usr/include/string.h /usr/include/unistd.h
 $(OBJDIR)/mcfloat.o: /usr/include/standards.h /usr/include/sys/access.h
 $(OBJDIR)/mcfloat.o: /usr/include/sys/lockf.h /usr/include/sys/stat.h
-$(OBJDIR)/mcfloat.o: /usr/include/sys/mode.h /usr/include/fptrap.h
-$(OBJDIR)/mcfloat.o: /usr/include/sys/fp_cpusync.h mcglobal.h mcfloat.h
-$(OBJDIR)/mcfloat.o: mcprint.h
+$(OBJDIR)/mcfloat.o: /usr/include/sys/mode.h mcglobal.h mcfloat.h mcprint.h
 $(OBJDIR)/mcttt.o: /usr/include/stddef.h /usr/include/standards.h
 $(OBJDIR)/mcttt.o: /usr/include/stdlib.h /usr/include/sys/wait.h
 $(OBJDIR)/mcttt.o: /usr/include/sys/resource.h /usr/include/sys/time.h
@@ -419,7 +415,8 @@ $(OBJDIR)/mcsyntax.o: /usr/include/sys/localedef.h /usr/include/sys/lc_core.h
 $(OBJDIR)/mcsyntax.o: /usr/include/locale.h /usr/include/sys/localedef31.h
 $(OBJDIR)/mcsyntax.o: mcglobal.h sunpos.h mcground.h mcgroundclasses.h
 $(OBJDIR)/mcsyntax.o: mcparse.h mc_group.hh mccdfin.h mcprint.h mchemparse.h
-$(OBJDIR)/mcsyntax.o: mcnest.h mc_commands.hh
+$(OBJDIR)/mcsyntax.o: mcnest.h mc_commands.hh mc_group.t
+$(OBJDIR)/mcsyntax.o: /usr/include/stddef.h /usr/include/standards.h
 $(OBJDIR)/mcinp.o: /usr/include/stdio.h /usr/include/va_list.h
 $(OBJDIR)/mcinp.o: /usr/include/sys/types.h /usr/include/sys/inttypes.h
 $(OBJDIR)/mcinp.o: /usr/include/sys/m_types.h /usr/include/sys/limits.h
@@ -432,7 +429,8 @@ $(OBJDIR)/mcinp.o: /usr/include/sys/localedef.h /usr/include/sys/lc_core.h
 $(OBJDIR)/mcinp.o: /usr/include/locale.h /usr/include/sys/localedef31.h
 $(OBJDIR)/mcinp.o: mcglobal.h sunpos.h mcground.h mcparse.h mc_group.hh
 $(OBJDIR)/mcinp.o: mcprint.h mc_module.hh mc_variable.hh mc_section.hh
-$(OBJDIR)/mcinp.o: mc_commands.hh mcsyntax.h
+$(OBJDIR)/mcinp.o: mc_commands.hh mcsyntax.h mc_group.t /usr/include/stddef.h
+$(OBJDIR)/mcinp.o: /usr/include/standards.h
 $(OBJDIR)/mccdfin.o: /usr/include/stddef.h /usr/include/standards.h
 $(OBJDIR)/mccdfin.o: /usr/include/stdlib.h /usr/include/sys/wait.h
 $(OBJDIR)/mccdfin.o: /usr/include/sys/resource.h /usr/include/sys/time.h
@@ -664,6 +662,7 @@ $(OBJDIR)/mc_module.o: /usr/include/sys/m_param.h /usr/include/sys/mstsave.h
 $(OBJDIR)/mc_module.o: /usr/include/sys/localedef.h
 $(OBJDIR)/mc_module.o: /usr/include/sys/lc_core.h /usr/include/locale.h
 $(OBJDIR)/mc_module.o: /usr/include/sys/localedef31.h mcparse.h mc_group.hh
+$(OBJDIR)/mc_module.o: mc_group.t
 $(OBJDIR)/mc_variable.o: mc_variable.hh /usr/include/stddef.h
 $(OBJDIR)/mc_variable.o: /usr/include/standards.h /usr/include/stdio.h
 $(OBJDIR)/mc_variable.o: /usr/include/va_list.h /usr/include/sys/types.h

@@ -318,20 +318,20 @@ void CalcWTheta(int k, GroundParam *gr, double Vm,
 		double *wqg, double *wqf,
 		double *dwqg, double *dwqf, double *dnewzL)
 {
-  double z, ustar, zL, gsig, cd, cf, uaf, ra, rs, f, oldwtheta, Taf,
+  double ustar, zL, gsig, cd, cf, uaf, ra, rs, f, oldwtheta, Taf,
          oldzL, phim, phit, psit, psim, qsat, qf, qaf, chih, wq, tmp, tmp2, tmp3,
          thetastar, qstar, qg, qsf, dphim, dphit, dpsim, dpsit, dustar, grtheta,
          dgrtheta, dchih, dcd, duaf, dcf, logzz0, wtheta, dqgdg, dqsfdf, dra, df,
          h2, lpress;
   Gradient dthetastar, dqstar, dwtheta, dqsat, dqaf, dqf;
-  int nit;
+  int nit, loc;
   /* Die Variablennamen richten sich nach den entsprechenden Formeln in Pielke 84 */
-/*  Vm = sqrt(sqr(gr->a[UWIND]) + sqr(gr->a[VWIND])); */
   if (Vm < 0.1)  Vm = 0.1;
-  logzz0 = log(gr->z / gr->z0);
+  loc = (gr - ground) + k * layer;
+  logzz0 = log(0.5 * level[k] / gr->z0);
   if (calcsoiltemp) {
-    grtheta = VirtPot(gr->Tg[0], gr->a[HUMIDITY], tmp = 0.5*(pp[k-1]+pp[k]));
-    dgrtheta = (1. + 0.61*gr->a[HUMIDITY]) * pow(1.e5 / tmp, Kappa);
+    grtheta = VirtPot(gr->Tg[0], g[HUMIDITY][loc], tmp = 0.5*(pp[k-1]+pp[k]));
+    dgrtheta = (1. + 0.61*g[HUMIDITY][loc]) * pow(1.e5 / tmp, Kappa);
   }
   else {
     grtheta = gr->Tg[0];
@@ -340,7 +340,6 @@ void CalcWTheta(int k, GroundParam *gr, double Vm,
   wtheta = gr->wtheta;
 give_it_a_new_try :
   zL = gr->zL;
-  z = gr->z;
   gsig = 1. - gr->sigf;
   lpress = 0.5 * (pp[k] + pp[k-1]);
   if (zL <= 0.)  {
@@ -383,16 +382,16 @@ give_it_a_new_try :
     tmp3 = pow(ustar * gr->z0 / visc, 0.45);
     tmp = chih /         /* Pielke: 7-49, 7-50 */
           (1. + chih * grc / karman * tmp3);
-    thetastar = tmp * (gr->a[TEMP] - grtheta);       /* Pielke: 7-49, 7-50 */
+    thetastar = tmp * (g[TEMP][loc] - grtheta);       /* Pielke: 7-49, 7-50 */
     tmp2 = dchih / (1. + chih * grc / karman * tmp3) -
            chih / sqr(1. + chih * grc / karman * tmp3) *
            grc / karman * (dchih * tmp3 +
                            0.45 * chih * tmp3 * dustar / ustar);
-    dthetastar[DZL] = tmp2 * (gr->a[TEMP] - grtheta);
+    dthetastar[DZL] = tmp2 * (g[TEMP][loc] - grtheta);
     dthetastar[DTG] =  - tmp * dgrtheta;
   }
   else {
-    thetastar = (gr->a[TEMP] - grtheta) / tmp;
+    thetastar = (g[TEMP][loc] - grtheta) / tmp;
     dthetastar[DZL] = thetastar / tmp * dpsit * 0.74;
     dthetastar[DTG] = -dgrtheta / tmp;
   }
@@ -408,7 +407,7 @@ give_it_a_new_try :
     duaf = 0.83 * dustar;
     cf = 0.01 * (1. + 0.3 / uaf);
     dcf = -0.003 / sqr(uaf) * duaf;
-    Taf = 0.3 * AbsoluteTemp(gr->a[TEMP], lpress, gr->a[HUMIDITY]) +
+    Taf = 0.3 * AbsoluteTemp(g[TEMP][loc], lpress, g[HUMIDITY][loc]) +
 	  0.6 * gr->Tf + 0.1 * gr->Tg[0];
     tmp = pow(1.e5 / lpress, Kappa);
     *wthetaf = -gr->sigf * 1.1 * gr->La * cf * uaf * tmp * (Taf - gr->Tf);
@@ -443,8 +442,8 @@ give_it_a_new_try :
   dqgdg = (tmp + 0.378 * qg / (lpress - 0.378 * qsat)) * dqsat[DTG];
   tmp = 1. + chih * grc / karman * tmp3;
   qstar = chih *         /* Pielke: 7-49, 7-50 */
-	  (gr->a[HUMIDITY] - qg) / tmp;
-  dqstar[DZL] = (gr->a[HUMIDITY] - qg) * (dchih / tmp - chih / (tmp*tmp) *
+	  (g[HUMIDITY][loc] - qg) / tmp;
+  dqstar[DZL] = (g[HUMIDITY][loc] - qg) * (dchih / tmp - chih / (tmp*tmp) *
                 (grc / karman * (dchih * tmp3 +
                  chih * 0.45 * tmp3 / ustar * dustar)));
   dqstar[DTG] = -dqgdg * chih / tmp;
@@ -470,14 +469,14 @@ give_it_a_new_try :
       f = 1.;
       df = 0.;
     }
-    qf = (10.*f*qsf + (3.*gr->a[HUMIDITY] + qg)*(1. - f)) / (4. + 6.*f);
+    qf = (10.*f*qsf + (3.*g[HUMIDITY][loc] + qg)*(1. - f)) / (4. + 6.*f);
       /* Pielke: 11-60, 11-61 */
-    dqf[DZL] = (40.*df*qsf - 30.*df*gr->a[HUMIDITY] - 10.*df*qg) /
+    dqf[DZL] = (40.*df*qsf - 30.*df*g[HUMIDITY][loc] - 10.*df*qg) /
                sqr(4. + 6.*f);
     dqf[DTG] = (1. - f) / (4. + 6.*f) * dqgdg;
     dqf[DTF] = 10.*f*dqsfdf / (4. + 6.*f);
     if (qf > qsf)  {qf = qsf; dqf[DZL] = dqf[DTG] = 0.; dqf[DTF] = dqsfdf;}
-    qaf = 0.3 * gr->a[HUMIDITY] + 0.6 * qf + 0.1 * qg;
+    qaf = 0.3 * g[HUMIDITY][loc] + 0.6 * qf + 0.1 * qg;
     dqaf[DZL] = 0.6 * dqf[DZL];
     dqaf[DTG] = 0.1 * dqgdg + 0.6 * dqf[DTG];
     dqaf[DTF] = 0.6 * dqf[DTF];
@@ -496,13 +495,13 @@ give_it_a_new_try :
   else  {
     *wqf = dwqf[DZL] = dwqf[DTG] = dwqf[DTF] = 0.;
   }
-  tmp = -sqr(ustar / Vm) / gr->z;
-  gr->uw = gr->vw = 1. / (1. + ustar * ustar / (gr->z * Vm) * tinc);
+  tmp = -2. * sqr(ustar / Vm) / level[k];
+  gr->uw = gr->vw = 1. / (1. + ustar * ustar / (0.5 * level[k] * Vm) * tinc);
   if (k)
     h2 = (level[k-1] * avg[TEMP*nz+k] + level[k] * avg[TEMP*nz+k-1]) / (level[k] + level[k-1]);
   else
     h2 = avg[TEMP*nz+k];
-  tmp = - z * Grav / (h2 * sqr(ustar) * ustar);
+  tmp = - 0.5 * level[k] * Grav / (h2 * sqr(ustar) * ustar);
   *newzL =  tmp * wtheta;
   dnewzL[DZL] = tmp * (dwtheta[DZL] - 3. / ustar * dustar * wtheta);
   dnewzL[DTG] = tmp * dwtheta[DTG];
@@ -579,14 +578,15 @@ double CalcBoundaryLayerHeight(GroundParam *gr, int i, int j)
 double CalcMeanWind(GroundParam *gr)
 {
   double Vm, wstar, grtheta, tmp;
-  int k;
+  int k, loc;
   k = gr->firstabove;
-  grtheta = VirtPot(gr->Tg[0], gr->a[HUMIDITY], 0.5*(pp[k-1]+pp[k])) - gr->a[TEMP];
-  Vm = sqr(gr->a[UWIND]) + sqr(gr->a[VWIND]);
+  loc = (gr - ground) + k * layer;
+  grtheta = VirtPot(gr->Tg[0], g[HUMIDITY][loc], 0.5*(pp[k-1]+pp[k])) - g[TEMP][loc];
+  Vm = sqr(g[UWIND][loc]) + sqr(g[VWIND][loc]);
   tmp = grtheta * 0.01;
   if (grtheta > 0. && gr->wtheta > 0. && gr->blh > 0.)  {
     if (gr->wtheta < tmp)  gr->wtheta = tmp;
-    wstar = pow(Grav / gr->a[TEMP] * gr->wtheta * gr->blh, 1./3.);
+    wstar = pow(Grav / g[TEMP][loc] * gr->wtheta * gr->blh, 1./3.);
     Vm += wstar*wstar;
   }
   return (sqrt(Vm));
@@ -742,7 +742,7 @@ void GroundInterface(double timeofday, int dayofyear, double tinc, Vector *sunpo
 	    if (gr->Tg[0] < 230.)  {
 	      Qg += (230. - gr->Tg[0]) * dGdg;
 	      gr->Tg[0] = 230.;
-	    }
+ 	    }
 	    if (gr->Tg[0] > 340.)  {
 	      Qg += (340. - gr->Tg[0]) * dGdg;
 	      gr->Tg[0] = 340.;

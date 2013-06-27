@@ -90,7 +90,7 @@ typedef enum  {
 char unit[][6] = {
 "m", "sec", "m/s", "K", "Pa", "W/m^2", "ppb", "kg/kg", "deg"};
 
-#define MAXVARIABLE 144
+#define MAXVARIABLE 140
 
 GroundParam grmark;
 
@@ -113,6 +113,8 @@ VarDesc variable[MAXVARIABLE] =
 	 &shortwaveradiation, NO_DIM, OPTIONS, SET_DEFAULT, 1, 0, 1, ON_OFF, NO_ERRORS_ALLOWED,
 	 NULL),
  VarDesc("Clouds", "Consider Clouds? (on/off)", NULL, INT_PTR, &cloudwater, NO_DIM,
+	 OPTIONS, SET_DEFAULT, 0, 0, 1, ON_OFF, NO_ERRORS_ALLOWED, NULL),
+ VarDesc("Horizontal-Diffusion", "Calculate? (on/off)", NULL, INT_PTR, &horizontaldiffusion, NO_DIM,
 	 OPTIONS, SET_DEFAULT, 0, 0, 1, ON_OFF, NO_ERRORS_ALLOWED, NULL),
  VarDesc("Cloud-Ice", "Consider Cloud Ice and Snow? (on/off)", NULL, INT_PTR, &cloudice, NO_DIM,
 	 OPTIONS, SET_DEFAULT, 0, 0, 1, ON_OFF, NO_ERRORS_ALLOWED, NULL),
@@ -276,14 +278,6 @@ VarDesc variable[MAXVARIABLE] =
  VarDesc("T_Ground", "Temperature at 1m below ground surface (K)", unit[TEMP_U], GROUND_PARAM, &grmark.
 	 Tg[NGROUNDLAYER-1], LAYER_DIM, GROUND_BORDER, SET_DEFAULT, 285, 240, 350, NORMAL_NUM, 0,
 	 OnGroundInterface),
- VarDesc("Ground_U", "U-Wind in Ground-Layer", unit[SPEED_U], GROUND_PARAM, &grmark.a[UWIND],
-	 LAYER_DIM, GROUND_BORDER, CALCULATED_VALUES, 0, -50., 50., NORMAL_NUM, 0, OnGroundInterface),
- VarDesc("Ground_V", "V-Wind in Ground-Layer", unit[SPEED_U], GROUND_PARAM, &grmark.a[VWIND],
-	 LAYER_DIM, GROUND_BORDER, CALCULATED_VALUES, 0, -50., 50., NORMAL_NUM, 0, OnGroundInterface),
- VarDesc("Ground_TEMP", "Temperature in Ground-Layer", unit[TEMP_U], GROUND_PARAM, &grmark.a[TEMP],
-	 LAYER_DIM, GROUND_BORDER, CALCULATED_VALUES, 0, 230., 330., NORMAL_NUM, 0, OnGroundInterface),
- VarDesc("Ground_Q", "Humidity in Ground-Layer", unit[MIXING_U], GROUND_PARAM, &grmark.a[HUMIDITY],
-	 LAYER_DIM, GROUND_BORDER, CALCULATED_VALUES, 0, 0., 0.02, NORMAL_NUM, 0, OnGroundInterface),
  VarDesc("Rain_Intensity", "Rain Intensity at Ground", "mm/sec", GROUND_PARAM, &grmark.rain_intensity,
 	 LAYER_DIM, GROUND_BORDER, CALCULATED_VALUES, 0, 0., 0.02, NORMAL_NUM, 0, OnCloudWater),
  VarDesc("Cumulated_Rain", "Cumulated rain since start of model run", "mm", GROUND_PARAM, &grmark.cum_rain,
@@ -321,8 +315,6 @@ VarDesc variable[MAXVARIABLE] =
 	 GROUND_BORDER, SET_DEFAULT, 0.98, 0.4, 1, NORMAL_NUM, 0, OnGroundInterface),
  VarDesc("Z0", "Ground roughness", unit[LENGTH_U], GROUND_PARAM, &grmark.z0, LAYER_DIM, GROUND_BORDER,
 	 SET_DEFAULT, 1, 1e-6, 30, NORMAL_NUM, 0, OnGroundInterface),
- VarDesc("Zt", "Height of first Point above Ground", unit[LENGTH_U], GROUND_PARAM, &grmark.z, LAYER_DIM,
-	 GROUND_BORDER, SET_DEFAULT, 10, 3, 25, NORMAL_NUM, 0, NULL),
  VarDesc("Leaf_Area_Index", "Leaf-Area-Index", NULL, GROUND_PARAM, &grmark.La, LAYER_DIM, GROUND_BORDER,
 	 SET_DEFAULT, 4, 0., 20, NORMAL_NUM, 0, OnGroundInterface),
  VarDesc("Plant_Albedo", "Albedo of plants", NULL, GROUND_PARAM, &grmark.albedof, LAYER_DIM,
@@ -466,7 +458,7 @@ char *OnGroundInterface(RelyCmmd cmmd, VarDesc *v)
     case NAME_OF_RELVAR :
        return ("Ground-Interface");
     case VAL_OF_RELVAR :
-       return (char *)(groundinterface ? "on" : "off");
+       return (groundinterface ? "on" : "off");
   }
 }
 
@@ -478,7 +470,7 @@ char *OnCloudWater(RelyCmmd cmmd, VarDesc *v)
     case NAME_OF_RELVAR :
        return ("Clouds");
     case VAL_OF_RELVAR :
-       return (char *)(cloudwater ? "on" : "off");
+       return (cloudwater ? "on" : "off");
   }
 }
 
@@ -490,7 +482,7 @@ char *OnCloudIce(RelyCmmd cmmd, VarDesc *v)
     case NAME_OF_RELVAR :
        return ("Cloud-Ice");
     case VAL_OF_RELVAR :
-       return (char *)(cloudice ? "on" : "off");
+       return (cloudice ? "on" : "off");
   }
 }
 
@@ -502,7 +494,7 @@ char *OnAdvection(RelyCmmd cmmd, VarDesc *v)
     case NAME_OF_RELVAR :
        return ("?Advection");
     case VAL_OF_RELVAR :
-       return (char *)((advection && windadvection) ? "on" : "off");
+       return ((advection && windadvection) ? "on" : "off");
   }
 }
 
@@ -540,7 +532,7 @@ char *OnChemistry(RelyCmmd cmmd, VarDesc *v)
     case NAME_OF_RELVAR :
        return ("Chemistry");
     case VAL_OF_RELVAR :
-       return (char *)((nsubs > 0) ? "on" : "off");
+       return ((nsubs > 0) ? "on" : "off");
   }
 }
 
@@ -552,7 +544,7 @@ char *OnKEpsTurb(RelyCmmd cmmd, VarDesc *v)
     case NAME_OF_RELVAR :
        return ("Turbulence-Type");
     case VAL_OF_RELVAR :
-       return (char *)((nsubs > 0) ? "on" : "off");
+       return ((nsubs > 0) ? "on" : "off");
   }
 }
 
@@ -1634,8 +1626,6 @@ int EndOfEnvironment()
     for (j = ny; --j; )  {
       loc = i*row + j;
       k = ground[loc].firstabove;
-      for (et = HUMIDITY+1; et--; )
-        ground[loc].a[et] = (g[et] ? g[et][k*layer+loc] : 0.);
       CalcSlope(&ground[loc].slope, i, j);
     }
   Coriol3 = 1.45444e-4 * sin(Pi * Xlat / 180.);
@@ -1754,13 +1744,6 @@ void InitializeData(void)
     case NEIGHBOUR :
        im = nx; break;
   }
-  /* Setze Ground-Luft-Werte gleich dem ersten Punkt darueber. */
-  for (i = nx; --i; )
-    for (j = ny; --j; )
-      for (et = HUMIDITY+1; et--; )  {
-        loc = i*row+j;
-        ground[loc].a[et] = g[et][ground[loc].firstabove*layer+loc];
-      }
   for (i = nx+1; i--; ) {
     loc = i*row;
     topo[loc+ny] = topo[loc+jm];

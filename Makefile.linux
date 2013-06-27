@@ -1,182 +1,43 @@
-############################################################################
-#
-#   This file is a part of
-#
-#   MetPhoMod v2.1, the comprehensive three dimensional, prognostic
-#		    mesoscale atmospheric summer smog model.
-#
-#   Copyright (C) 1996-1999, Silvan Perego
-#
-#
-#   This program is free software; you can redistribute it and/or
-#   modify it under the terms of the GNU General Public License
-#   as published by the Free Software Foundation; either version 2
-#   of the License, or (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, refer to the WEB page
-#
-#   http://www.gnu.org/copyleft/gpl.html
-#
-############################################################################
-#
-#	MetPhoMod Makefile
-#
-#	use this file by either typing:
-#
-#	$(MAKE) opt     -> to build the optimized, sequential version
-#	$(MAKE) optp	-> to build the optimized, parallel version
-#	$(MAKE) debug	-> to build the sequential, debugging version
-#	$(MAKE) debugp	-> to build the parallel, debugging version
-#
-# Before using this file, change the user variables to values which
-# reflect your system.
-# On some system this Makefile does not work together with "$(MAKE)", try
-# GNU-$(MAKE) "g$(MAKE)"
-#
-# ***************************************************************************
-#
-# USER Variables: change settings according to your local installation
-#
-# ***************************************************************************
-# Compiler: The C-compiler to be used for compilation. The compiler must be
-# ANSI-C compliant.
-CC=g++
-#
-# for GNU-C
-#CC=gcc
-#
-# ***************************************************************************
-# CCOPT    C++ compiler optimization flags. Use maximum optimization. 
-#          IEEE floating point compliance
-#          is often time consuming but not necessary for MetPhoMod.
-#
-# Solaris options
-#CCOPT=-fast -xO5
-#
-# Linux/GNU-C options
-CCOPT=-O3 -ffast-math
-#
-# DEC/UNIX options
-#CCOPT=-O2 -std1
-#
-# AIX options
-#CCOPT=-O3 -qstrict -qarch=604 -qtune=604 -qflttrap=overflow:zerodivide:invalid
-#
-# SGI/MIPS-4 options
-#CCOPT=-O3 -64
-#
-# ***************************************************************************
-# Name of the Fortran compiler
-F77=g77
-# ***************************************************************************
-# FOPT compiler optimization flags
-FOPT=-O3 -ffast-math
-#
-# ***************************************************************************
-# CCDEBUG       compiler debugging flags
-CCDEBUG=-g
-#
-# ***************************************************************************
-# FDEBUG       compiler debugging flags
-FDEBUG=-g
-#
-# ***************************************************************************
-# CFLAGS2  general C flags, which should always be called.
-CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DLINUX
-#
-# ***************************************************************************
-# compiler flags to be used in all versions
-GENFLAGS=
-#
-# For Solaris:
-#GENFLAGS=-ftrap=invalid
-# ***************************************************************************
-# LEXER program. A lex compatible program
-LEX=flex
-#
-# or
-#LEX=flex
-#
-# ***************************************************************************
-# Syntax parser program. Must be yacc compatible
-YACC=bison -y
-#
-# or
-#YACC=bison -y
-#
-# ***************************************************************************
-# Libraries to be linked with the sequential version
-SEQLIBS=-lnetcdf -lg2c -lm
-#
-# for SUN Solaris -lnsl is required, as well.
-#SEQLIBS=-lnetcdf -lm -lnsl
-#
-# ***************************************************************************
-# Libraries to be linked with the parallel version
-PARLIBS=-lnetcdf -lm -lxlf90 -lpvm3 -lgpvm3
-#
-# For solaris, -lnsl and -lsocket are required as well.
-#PARLIBS=-lnetcdf -lm -lpvm3 -lgpvm3 -lnsl -lsocket
-#
-# On some parallel machines, -lgpvm3 does not exist
-#PARLIBS=-lnetcdf -lm -lpvm3
-#
-# ***************************************************************************
-# NETCDF 3 home directory. This $(MAKE)file assumes that includes are under 
-# $(NETCDF)/include and libs are under $(NETCDF)/lib
-NETCDFHOME=/usr/local
-#
-# ***************************************************************************
-# PVM 3.3 home directory-> set the PVM_ROOT environment variable within your
-# shell!
-# (These variables have no effect, when building the sequential version.)
-#PVM_ROOT=$(HOME)/pvm3
-#
-# PVM 3.3 system architecture. Refer to the PVM3 documentation
-#
-ARCH=LINUX
-#
-############################################################################
-#
-# NO CHANGES BELOW THIS LINE SHOULD BE NECESSARY!
-#
-############################################################################
+#vvvvvvvvvvvvvvvvvvvvvvv keep these lines vvvvvvvvvvvvvvvvvvvvvvv
+
+
+normal :
+	if [ -f .nodebug ] ; \
+	then make opt ; \
+	else make debug ; \
+	fi ;
 
 opt :
-	(cd mctwostream; \
-	$(MAKE) FFLAGS="$(FOPT)" CFLAGS="$(CCOPT) $(CFLAGS2)" GENFLAGS=$(GENFLAGS) OBJDIR=optm)
-	$(MAKE) meteochem FFLAGS="$(FOPT)" CFLAGS="$(CCOPT)" \
-	   OBJDIR=optm STRIP=strip
+	- rm -f .debug
+	touch .nodebug
+	(cd mctwostream; make opt $(DEFS))
+	make meteochem FFLAGS=-O3 CFLAGS="-O3 -ffast-math "$(DEFS) \
+	   OBJDIR=optm STRIP=ls
 
 optp :
-	(cd mctwostream; \
-	$(MAKE) FFLAGS="$(FOPT)" CFLAGS="$(CCOPT) $(INCLUDE) -DPARALLEL" \
-	   GENFLAGS=$(GENFLAGS) OBJDIR=optmp)
-	$(MAKE) parallel FFLAGS="$(FOPT)" CFLAGS="$(CCOPT) -DPARALLEL" \
-	   OBJDIR=optmp STRIP=strip ARCH=RS6K
+	- rm -f .debug
+	touch .nodebug
+	make parallel FFLAGS=-O3 CFLAGS="-O2 -ffast-math -I. -I/usr/local/include -I/home/perego/pvm3/include -DLINUX -DPARALLEL -DSYSTEM=\\\""`uname`"\\\" -DDATE=\\\""`date +%D`"\\\" "$(DEFS) \
+	   OBJDIR=optmp STRIP=strip ARCH=LINUX
 
 debug :
-	(cd mctwostream; \
-	$(MAKE) FFLAGS="$(FDEBUG)" CFLAGS="$(CCDEBUG) $(CFLAGS2)" GENFLAGS=$(GENFLAGS) OBJDIR=dbg)
-	$(MAKE) meteochem FFLAGS="$(FDEBUG)" CFLAGS="$(CCDEBUG)" OBJDIR=dbg STRIP="ls -l"
+	- rm -f .nodebug
+	touch .debug
+	(cd mctwostream; make debug)
+	make meteochem FFLAGS=-g CFLAGS="-g "$(DEFS) OBJDIR=dbg STRIP=ls
 
 debugp :
-	(cd mctwostream; \
-	$(MAKE) FFLAGS="$(FDEBUG)" CFLAGS="$(CCDEBUG) $(INCLUDE) -DPARALLEL" \
-	   GENFLAGS=$(GENFLAGS) OBJDIR=dbgp)
-	$(MAKE) parallel FFLAGS="$(FDEBUG)" CFLAGS="$(CCDEBUG) -DPARALLEL" \
-	   OBJDIR=dbgp STRIP="ls -l" ARCH=RS6K
+	- rm -f .debug
+	touch .nodebug
+	make parallel FFLAGS=-g CFLAGS="-g -I. -I/usr/local/include -I/home/perego/pvm3/include -DLINUX -DPARALLEL -DSYSTEM=\\\""`uname`"\\\" -DDATE=\\\""`date +%D`"\\\" "$(DEFS) \
+	   OBJDIR=dbgp STRIP=ls ARCH=LINUX
 
 # opt:=CFLAGS=-O2 -I/opt/include
 # debug:=CFLAGS=-g -I/opt/include
 
-INCLUDE=-I. -I$(NETCDFHOME)/include -I$(PVM_ROOT)/include
+CC=g++
+INCLUDE=-I. -I/usr/local/include -I/home/perego/pvm3/include
+CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DLINUX -fno-implicit-templates
 
 #vvvvvvvvvvvvvvvvvvvvvvv replace these lines vvvvvvvvvvvvvvvvvvvvvvv
 
@@ -194,7 +55,7 @@ OBJS = $(OBJDIR)/mcmain.o $(OBJDIR)/mcglobal.o $(OBJDIR)/mcdynamics.o \
        $(OBJDIR)/mc_module.o $(OBJDIR)/mc_variable.o $(OBJDIR)/mc_section.o \
        $(OBJDIR)/mc_commands.o $(OBJDIR)/puffemit.o
 
-LIBS = mctwostream/$(OBJDIR)/libmctwostream.a
+LIBS = mctwostream/libmctwostream.a
 
 SRC = mcmain.c mcglobal.c mcdynamics.c mcparse.c mcpress.c mcdep.c \
       sunpos.c mcground.c mcfloat.c mcttt.c mcfilter.c mcemiss.c \
@@ -210,470 +71,445 @@ SRC = mcmain.c mcglobal.c mcdynamics.c mcparse.c mcpress.c mcdep.c \
 
 depend :
 	makedepend $(INCLUDE) -p'$$(OBJDIR)/' $(SRC)
-	(cd mctwostream; $(MAKE) depend)
+	(cd mctwostream; make depend)
 
 $(OBJDIR)/%.o : %.c
-	$(CC) -c $(CFLAGS) $(CFLAGS2) $(GENFLAGS) $(INCLUDE) -DFERRET_FORMAT $*.c -o $@
+	$(CC) -c $(CFLAGS) $(CFLAGS2) $(INCLUDE) -DFERRET_FORMAT $*.c -o $@
 
 $(OBJDIR)/%.o : %.cc
-	$(CC) -c $(CFLAGS) $(CFLAGS2) $(GENFLAGS) $(INCLUDE) -DFERRET_FORMAT $*.cc -o $@
+	$(CC) -c $(CFLAGS) $(CFLAGS2) $(INCLUDE) -DFERRET_FORMAT $*.cc -o $@
 
 $(OBJDIR)/%.o : %.f
-	$(F77) -c $(FFLAGS) $(GENFLAGS) $*.f -o $@
+	f77 -c $(FFLAGS) $*.f -o $@
 
 parallel : $(OBJS) $(OBJDIR)/mcparallel.o 
-	$(CC) $(CFLAGS) $(OBJS) $(OBJDIR)/mcparallel.o -L$(NETCDFHOME)/lib -L$(PVM_ROOT)/lib/$(ARCH) \
-	    $(LIBS) $(PARLIBS) -o meteochem
+	f77  $(OBJS) $(OBJDIR)/mcparallel.o -L/usr/local/lib -L/home/perego/pvm3/lib/$(ARCH) \
+	    -lm -lnetcdf -lpvm3 -lg++ $(LIBS) -o meteochem
 	$(STRIP) meteochem
 
 meteochem : $(OBJS) $(LIBS)
-	$(CC) $(CFLAGS) $(OBJS) -L$(NETCDFHOME)/lib $(LIBS) $(SEQLIBS) -o meteochem
+	f77 $(OBJS) -L/usr/local/lib -lm -lnetcdf -lg++ $(LIBS) -o meteochem
 	$(STRIP) meteochem
 
 mcinp.c : mcinp.l
-	$(LEX) -t mcinp.l | sed 's/yy/mci/g' > mcinp.c
+	flex -+ -t mcinp.l | sed 's/yy/mci/g' > mcinp.c
 
 mcsyntax.c mcsyntax.h : mcsyntax.y
-	$(YACC) -d mcsyntax.y
+	bison -y -d mcsyntax.y
 	sed 's/yy/mci/g' y.tab.c > mcsyntax.c
 	rm y.tab.c
 	sed 's/yy/mci/g' y.tab.h > mcsyntax.h
 	rm y.tab.h
 
-$(OBJDIR)/mchelp.o : mcsyntax.incl
-
 mcsyntax.incl : mcsyntax.y
 	sed '1,/%%/d;/{/,/}$$/d;/%%/,$$d;/^$$/d;s/\;$$//;s/^/\"/;s/$$/\\n\"/' mcsyntax.y > mcsyntax.incl
 
 mchemsyntax.c mchemsyntax.h : mchemsyntax.y
-	$(YACC) -d mchemsyntax.y
+	bison -y -d mchemsyntax.y
 	sed 's/yy/chi/g' y.tab.c > mchemsyntax.c
 	rm y.tab.c
 	sed 's/yy/chi/g' y.tab.h > mchemsyntax.h
 	rm y.tab.h
 
 mcheminp.c : mcheminp.l
-	$(LEX) -t mcheminp.l | sed 's/yy/chi/g' > mcheminp.c
+	flex -+ -t mcheminp.l | sed 's/yy/chi/g' > mcheminp.c
 
-# DO NOT DELETE THIS LINE -- $(MAKE) depend depends on it.
+# DO NOT DELETE THIS LINE -- make depend depends on it.
 
-$(OBJDIR)/mcmain.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcmain.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcmain.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcmain.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcmain.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcmain.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcmain.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcmain.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcmain.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcmain.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcmain.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcmain.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcmain.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcmain.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcmain.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcmain.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcmain.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mcmain.o: /usr/include/bits/mathcalls.h mcglobal.h mcpress.h
-$(OBJDIR)/mcmain.o: mcdynamics.h mcprint.h mcclouds.h mcttt.h mckeps.h
-$(OBJDIR)/mcmain.o: mcfloat.h mcfilter.h mchelp.h mcemiss.h mcadvect.h
-$(OBJDIR)/mcmain.o: sunpos.h mcground.h mcparse.h mc_group.hh mccdfin.h
-$(OBJDIR)/mcmain.o: mcdep.h mchemparse.h mchem.h mcnest.h mcppm.h
-$(OBJDIR)/mcmain.o: mc_module.hh mc_variable.hh mc_section.hh mc_commands.hh
+$(OBJDIR)/mcmain.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcmain.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcmain.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcmain.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcmain.o: /usr/include/ieee854.h mcglobal.h mcpress.h mcdynamics.h
+$(OBJDIR)/mcmain.o: mcprint.h mcclouds.h mcttt.h mckeps.h mcfloat.h
+$(OBJDIR)/mcmain.o: mcfilter.h mchelp.h mcemiss.h mcadvect.h sunpos.h
+$(OBJDIR)/mcmain.o: mcground.h mcparse.h mc_group.hh mccdfin.h mcdep.h
+$(OBJDIR)/mcmain.o: mchemparse.h mchem.h mcnest.h mcppm.h mc_module.hh
+$(OBJDIR)/mcmain.o: mc_variable.hh mc_section.hh mc_commands.hh
+$(OBJDIR)/mcglobal.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
 $(OBJDIR)/mcglobal.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/mcglobal.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcglobal.o: /usr/include/sys/types.h /usr/include/bits/types.h
-$(OBJDIR)/mcglobal.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcglobal.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcglobal.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcglobal.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mcglobal.o: /usr/include/stdio.h /usr/include/libio.h
-$(OBJDIR)/mcglobal.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+$(OBJDIR)/mcglobal.o: /usr/include/sys/cdefs.h /usr/include/errno.h
+$(OBJDIR)/mcglobal.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+$(OBJDIR)/mcglobal.o: /usr/include/alloca.h /usr/include/stdio.h
+$(OBJDIR)/mcglobal.o: /usr/include/libio.h /usr/include/_G_config.h
 $(OBJDIR)/mcglobal.o: /usr/include/string.h /usr/include/malloc.h
-$(OBJDIR)/mcglobal.o: /usr/include/math.h /usr/include/bits/huge_val.h
-$(OBJDIR)/mcglobal.o: /usr/include/bits/mathdef.h
-$(OBJDIR)/mcglobal.o: /usr/include/bits/mathcalls.h mcglobal.h sunpos.h
-$(OBJDIR)/mcglobal.o: mcground.h mcparse.h mc_group.hh mcprint.h
-$(OBJDIR)/mcdynamics.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcdynamics.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcdynamics.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcdynamics.o: /usr/include/_G_config.h
-$(OBJDIR)/mcdynamics.o: /usr/include/bits/stdio_lim.h /usr/include/string.h
-$(OBJDIR)/mcdynamics.o: /usr/include/math.h /usr/include/bits/huge_val.h
-$(OBJDIR)/mcdynamics.o: /usr/include/bits/mathdef.h
-$(OBJDIR)/mcdynamics.o: /usr/include/bits/mathcalls.h /usr/include/malloc.h
+$(OBJDIR)/mcglobal.o: /usr/include/math.h /usr/include/huge_val.h
+$(OBJDIR)/mcglobal.o: /usr/include/endian.h /usr/include/bytesex.h
+$(OBJDIR)/mcglobal.o: /usr/include/nan.h
+$(OBJDIR)/mcglobal.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcglobal.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcglobal.o: /usr/include/ieee854.h mcglobal.h sunpos.h mcground.h
+$(OBJDIR)/mcglobal.o: mcparse.h mc_group.hh mcprint.h
+$(OBJDIR)/mcdynamics.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcdynamics.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcdynamics.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcdynamics.o: /usr/include/string.h /usr/include/features.h
+$(OBJDIR)/mcdynamics.o: /usr/include/math.h /usr/include/huge_val.h
+$(OBJDIR)/mcdynamics.o: /usr/include/endian.h /usr/include/bytesex.h
+$(OBJDIR)/mcdynamics.o: /usr/include/nan.h
+$(OBJDIR)/mcdynamics.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcdynamics.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcdynamics.o: /usr/include/ieee854.h /usr/include/malloc.h
 $(OBJDIR)/mcdynamics.o: mcglobal.h sunpos.h mcground.h mcpress.h mcdynamics.h
 $(OBJDIR)/mcdynamics.o: mcfilter.h
-$(OBJDIR)/mcparse.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcparse.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcparse.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcparse.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcparse.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcparse.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcparse.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcparse.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcparse.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mcparse.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcparse.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mcparse.o: /usr/include/bits/mathcalls.h mcglobal.h sunpos.h
-$(OBJDIR)/mcparse.o: mcground.h mcgroundclasses.h mcpress.h mcparse.h
-$(OBJDIR)/mcparse.o: mc_group.hh mcemiss.h mcfilter.h mcdep.h mchemparse.h
-$(OBJDIR)/mcparse.o: mchem.h mcclouds.h mcnest.h mpdata.h mcppm.h mcrely.h
+$(OBJDIR)/mcparse.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcparse.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcparse.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcparse.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcparse.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcparse.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mcparse.o: /usr/include/string.h
+$(OBJDIR)/mcparse.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stdarg.h
+$(OBJDIR)/mcparse.o: /usr/include/math.h /usr/include/huge_val.h
+$(OBJDIR)/mcparse.o: /usr/include/endian.h /usr/include/bytesex.h
+$(OBJDIR)/mcparse.o: /usr/include/nan.h
+$(OBJDIR)/mcparse.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcparse.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcparse.o: /usr/include/ieee854.h mcglobal.h sunpos.h mcground.h
+$(OBJDIR)/mcparse.o: mcgroundclasses.h mcpress.h mcparse.h mc_group.hh
+$(OBJDIR)/mcparse.o: mcemiss.h mcfilter.h mcdep.h mchemparse.h mchem.h
+$(OBJDIR)/mcparse.o: mcclouds.h mcnest.h mpdata.h mcppm.h mcrely.h
 $(OBJDIR)/mcparse.o: mc_module.hh mc_variable.hh mc_section.hh mc_commands.hh
-$(OBJDIR)/mcparse.o: mc_group.t
-$(OBJDIR)/mcpress.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcpress.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcpress.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcpress.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcpress.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcpress.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcpress.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcpress.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcpress.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcpress.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcpress.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcpress.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcpress.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcpress.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcpress.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcpress.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcpress.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mcpress.o: /usr/include/bits/mathcalls.h sunpos.h mcglobal.h
-$(OBJDIR)/mcpress.o: mcground.h mcpress.h
-$(OBJDIR)/mcdep.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcdep.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcdep.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcdep.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcdep.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcdep.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcdep.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcdep.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcdep.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcpress.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcpress.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcpress.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcpress.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcpress.o: /usr/include/ieee854.h sunpos.h mcglobal.h mcground.h
+$(OBJDIR)/mcpress.o: mcpress.h
+$(OBJDIR)/mcdep.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcdep.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcdep.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcdep.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcdep.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcdep.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcdep.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcdep.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mcdep.o: /usr/include/bits/mathcalls.h mcglobal.h sunpos.h
-$(OBJDIR)/mcdep.o: mcground.h mcparse.h mc_group.hh mcdep.h
-$(OBJDIR)/sunpos.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/sunpos.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/sunpos.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/sunpos.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/sunpos.o: /usr/include/math.h /usr/include/bits/huge_val.h
-$(OBJDIR)/sunpos.o: /usr/include/bits/mathdef.h /usr/include/bits/mathcalls.h
-$(OBJDIR)/sunpos.o: sunpos.h
-$(OBJDIR)/mcground.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcground.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcground.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcground.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcground.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcground.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcground.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcground.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcground.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mcground.o: /usr/include/math.h /usr/include/bits/huge_val.h
-$(OBJDIR)/mcground.o: /usr/include/bits/mathdef.h
-$(OBJDIR)/mcground.o: /usr/include/bits/mathcalls.h mcglobal.h mcpress.h
-$(OBJDIR)/mcground.o: sunpos.h mcground.h mcfloat.h mctwostream/mctwostream.h
+$(OBJDIR)/mcdep.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcdep.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcdep.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcdep.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcdep.o: /usr/include/ieee854.h mcglobal.h sunpos.h mcground.h
+$(OBJDIR)/mcdep.o: mcparse.h mc_group.hh mcdep.h
+$(OBJDIR)/sunpos.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/sunpos.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/sunpos.o: /usr/include/math.h /usr/include/features.h
+$(OBJDIR)/sunpos.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/sunpos.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/sunpos.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/sunpos.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/sunpos.o: /usr/include/ieee854.h sunpos.h
+$(OBJDIR)/mcground.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcground.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcground.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcground.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcground.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcground.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mcground.o: /usr/include/math.h /usr/include/huge_val.h
+$(OBJDIR)/mcground.o: /usr/include/endian.h /usr/include/bytesex.h
+$(OBJDIR)/mcground.o: /usr/include/nan.h
+$(OBJDIR)/mcground.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcground.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcground.o: /usr/include/ieee854.h mcglobal.h mcpress.h sunpos.h
+$(OBJDIR)/mcground.o: mcground.h mcfloat.h mctwostream/mctwostream.h
 $(OBJDIR)/mcground.o: mc_module.hh mc_variable.hh mc_section.hh
-$(OBJDIR)/mcground.o: mc_commands.hh mctwostream/mcphotodiss.h
-$(OBJDIR)/mcground.o: mctwostream/mcapd.h mc_group.hh
+$(OBJDIR)/mcground.o: mc_commands.hh
 $(OBJDIR)/mcfloat.o: /usr/include/signal.h /usr/include/features.h
-$(OBJDIR)/mcfloat.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/sigset.h /usr/include/bits/types.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/signum.h /usr/include/time.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/siginfo.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/sigaction.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/sigcontext.h
-$(OBJDIR)/mcfloat.o: /usr/include/asm/sigcontext.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/sigstack.h /usr/include/stdio.h
+$(OBJDIR)/mcfloat.o: /usr/include/sys/cdefs.h /usr/include/sys/types.h
+$(OBJDIR)/mcfloat.o: /usr/include/linux/types.h
+$(OBJDIR)/mcfloat.o: /usr/include/linux/posix_types.h
+$(OBJDIR)/mcfloat.o: /usr/include/asm/posix_types.h /usr/include/asm/types.h
+$(OBJDIR)/mcfloat.o: /usr/include/sys/bitypes.h /usr/include/linux/signal.h
+$(OBJDIR)/mcfloat.o: /usr/include/asm/signal.h /usr/include/stdio.h
 $(OBJDIR)/mcfloat.o: /usr/include/libio.h /usr/include/_G_config.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/stdio_lim.h /usr/include/stdlib.h
-$(OBJDIR)/mcfloat.o: /usr/include/sys/types.h /usr/include/endian.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/select.h /usr/include/sys/sysmacros.h
-$(OBJDIR)/mcfloat.o: /usr/include/alloca.h /usr/include/string.h
-$(OBJDIR)/mcfloat.o: /usr/include/unistd.h /usr/include/bits/posix_opt.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/confname.h /usr/include/getopt.h
-$(OBJDIR)/mcfloat.o: /usr/include/sys/wait.h /usr/include/bits/waitflags.h
-$(OBJDIR)/mcfloat.o: /usr/include/bits/waitstatus.h mcglobal.h mcfloat.h
-$(OBJDIR)/mcfloat.o: mcprint.h
+$(OBJDIR)/mcfloat.o: /usr/include/stdlib.h
+$(OBJDIR)/mcfloat.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcfloat.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcfloat.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mcfloat.o: /usr/include/string.h /usr/include/unistd.h
+$(OBJDIR)/mcfloat.o: /usr/include/posix_opt.h /usr/include/gnu/types.h
+$(OBJDIR)/mcfloat.o: /usr/include/confname.h /usr/include/sys/wait.h
+$(OBJDIR)/mcfloat.o: /usr/include/waitflags.h /usr/include/waitstatus.h
+$(OBJDIR)/mcfloat.o: /usr/include/endian.h /usr/include/bytesex.h mcglobal.h
+$(OBJDIR)/mcfloat.o: mcfloat.h mcprint.h
+$(OBJDIR)/mcttt.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
 $(OBJDIR)/mcttt.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/mcttt.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcttt.o: /usr/include/sys/types.h /usr/include/bits/types.h
-$(OBJDIR)/mcttt.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcttt.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcttt.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcttt.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mcttt.o: /usr/include/stdio.h /usr/include/libio.h
-$(OBJDIR)/mcttt.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcttt.o: /usr/include/math.h /usr/include/bits/huge_val.h
-$(OBJDIR)/mcttt.o: /usr/include/bits/mathdef.h /usr/include/bits/mathcalls.h
-$(OBJDIR)/mcttt.o: /usr/include/malloc.h mcglobal.h mcpress.h sunpos.h
-$(OBJDIR)/mcttt.o: mcground.h mcttt.h
-$(OBJDIR)/mcfilter.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcfilter.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcfilter.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcfilter.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcfilter.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcfilter.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcfilter.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcfilter.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcfilter.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcttt.o: /usr/include/sys/cdefs.h /usr/include/errno.h
+$(OBJDIR)/mcttt.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+$(OBJDIR)/mcttt.o: /usr/include/alloca.h /usr/include/stdio.h
+$(OBJDIR)/mcttt.o: /usr/include/libio.h /usr/include/_G_config.h
+$(OBJDIR)/mcttt.o: /usr/include/math.h /usr/include/huge_val.h
+$(OBJDIR)/mcttt.o: /usr/include/endian.h /usr/include/bytesex.h
+$(OBJDIR)/mcttt.o: /usr/include/nan.h
+$(OBJDIR)/mcttt.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcttt.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcttt.o: /usr/include/ieee854.h /usr/include/malloc.h mcglobal.h
+$(OBJDIR)/mcttt.o: mcpress.h sunpos.h mcground.h mcttt.h
+$(OBJDIR)/mcfilter.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcfilter.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcfilter.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcfilter.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcfilter.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcfilter.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcfilter.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcfilter.o: /usr/include/bits/huge_val.h
-$(OBJDIR)/mcfilter.o: /usr/include/bits/mathdef.h
-$(OBJDIR)/mcfilter.o: /usr/include/bits/mathcalls.h mcglobal.h mcfilter.h
-$(OBJDIR)/mcemiss.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcemiss.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcemiss.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcemiss.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcemiss.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcemiss.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcemiss.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcemiss.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcemiss.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcfilter.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcfilter.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcfilter.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcfilter.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcfilter.o: /usr/include/ieee854.h mcglobal.h mcfilter.h
+$(OBJDIR)/mcemiss.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcemiss.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcemiss.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcemiss.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcemiss.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcemiss.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcemiss.o: /usr/include/string.h mcglobal.h sunpos.h mcground.h
 $(OBJDIR)/mcemiss.o: mcparse.h mc_group.hh mcemiss.h
-$(OBJDIR)/mcinp.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcinp.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcinp.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcinp.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcinp.o: /usr/include/string.h /usr/include/stdlib.h
-$(OBJDIR)/mcinp.o: /usr/include/sys/types.h /usr/include/time.h
-$(OBJDIR)/mcinp.o: /usr/include/endian.h /usr/include/bits/endian.h
-$(OBJDIR)/mcinp.o: /usr/include/sys/select.h /usr/include/bits/select.h
-$(OBJDIR)/mcinp.o: /usr/include/bits/sigset.h /usr/include/sys/sysmacros.h
-$(OBJDIR)/mcinp.o: /usr/include/alloca.h mcglobal.h sunpos.h mcground.h
+$(OBJDIR)/mcsyntax.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcsyntax.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcsyntax.o: /usr/include/string.h /usr/include/features.h
+$(OBJDIR)/mcsyntax.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcsyntax.o: /usr/include/stdlib.h /usr/include/errno.h
+$(OBJDIR)/mcsyntax.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+$(OBJDIR)/mcsyntax.o: /usr/include/alloca.h mcglobal.h sunpos.h mcground.h
+$(OBJDIR)/mcsyntax.o: mcgroundclasses.h mcparse.h mc_group.hh mccdfin.h
+$(OBJDIR)/mcsyntax.o: mcprint.h mchemparse.h mcnest.h mc_commands.hh
+$(OBJDIR)/mcinp.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcinp.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcinp.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcinp.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcinp.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcinp.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mcinp.o: /usr/include/string.h mcglobal.h sunpos.h mcground.h
 $(OBJDIR)/mcinp.o: mcparse.h mc_group.hh mcprint.h mc_module.hh
-$(OBJDIR)/mcinp.o: mc_variable.hh mc_section.hh mc_commands.hh mc_group.t
+$(OBJDIR)/mcinp.o: mc_variable.hh mc_section.hh mc_commands.hh mcsyntax.h
+$(OBJDIR)/mccdfin.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
 $(OBJDIR)/mccdfin.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/mccdfin.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mccdfin.o: /usr/include/sys/types.h /usr/include/bits/types.h
-$(OBJDIR)/mccdfin.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mccdfin.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mccdfin.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mccdfin.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mccdfin.o: /usr/include/stdio.h /usr/include/libio.h
-$(OBJDIR)/mccdfin.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mccdfin.o: /usr/include/string.h /usr/local/include/netcdf.h
-$(OBJDIR)/mccdfin.o: /usr/include/errno.h /usr/include/bits/errno.h
+$(OBJDIR)/mccdfin.o: /usr/include/sys/cdefs.h /usr/include/errno.h
 $(OBJDIR)/mccdfin.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+$(OBJDIR)/mccdfin.o: /usr/include/alloca.h /usr/include/stdio.h
+$(OBJDIR)/mccdfin.o: /usr/include/libio.h /usr/include/_G_config.h
+$(OBJDIR)/mccdfin.o: /usr/include/string.h /usr/local/include/netcdf.h
 $(OBJDIR)/mccdfin.o: mcglobal.h sunpos.h mcground.h mcparse.h mc_group.hh
 $(OBJDIR)/mccdfin.o: mccdfin.h mcemiss.h
-$(OBJDIR)/mcprint.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcprint.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcprint.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcprint.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcprint.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcprint.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcprint.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcprint.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcprint.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcprint.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcprint.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcprint.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcprint.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcprint.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcprint.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcprint.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcprint.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mcprint.o: /usr/include/bits/mathcalls.h
-$(OBJDIR)/mcprint.o: /usr/local/include/netcdf.h /usr/include/errno.h
-$(OBJDIR)/mcprint.o: /usr/include/bits/errno.h /usr/include/linux/errno.h
-$(OBJDIR)/mcprint.o: /usr/include/asm/errno.h mcglobal.h sunpos.h mcground.h
-$(OBJDIR)/mcprint.o: mcparse.h mc_group.hh mcprint.h mchemparse.h mchem.h
-$(OBJDIR)/mchelp.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mchelp.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mchelp.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mchelp.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mchelp.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mchelp.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mchelp.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mchelp.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mchelp.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcprint.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcprint.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcprint.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcprint.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcprint.o: /usr/include/ieee854.h /usr/local/include/netcdf.h
+$(OBJDIR)/mcprint.o: mcglobal.h sunpos.h mcground.h mcparse.h mc_group.hh
+$(OBJDIR)/mcprint.o: mcprint.h mchemparse.h mchem.h
+$(OBJDIR)/mchelp.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mchelp.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mchelp.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mchelp.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mchelp.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mchelp.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mchelp.o: /usr/include/string.h mcglobal.h sunpos.h mcground.h
 $(OBJDIR)/mchelp.o: mcparse.h mc_group.hh mchelp.h mc_module.hh
-$(OBJDIR)/mchelp.o: mc_variable.hh mc_section.hh mc_commands.hh
-$(OBJDIR)/mchelp.o: mctwostream/mctwostream.h mctwostream/mcphotodiss.h
-$(OBJDIR)/mchelp.o: mctwostream/mcapd.h
-$(OBJDIR)/mcadvect.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcadvect.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcadvect.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcadvect.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcadvect.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcadvect.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcadvect.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcadvect.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcadvect.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mchelp.o: mc_variable.hh mc_section.hh mc_commands.hh mcsyntax.incl
+$(OBJDIR)/mcadvect.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcadvect.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcadvect.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcadvect.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcadvect.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcadvect.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcadvect.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcadvect.o: /usr/include/bits/huge_val.h
-$(OBJDIR)/mcadvect.o: /usr/include/bits/mathdef.h
-$(OBJDIR)/mcadvect.o: /usr/include/bits/mathcalls.h mcglobal.h sunpos.h
-$(OBJDIR)/mcadvect.o: mcground.h mchemparse.h mpdata.h
-$(OBJDIR)/mpdata.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mpdata.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mpdata.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mpdata.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mpdata.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mpdata.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mpdata.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mpdata.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mpdata.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mpdata.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mpdata.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mpdata.o: /usr/include/bits/mathcalls.h mcglobal.h mpdata.h
-$(OBJDIR)/mchem.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mchem.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mchem.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mchem.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mchem.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mchem.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mchem.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mchem.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mchem.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcadvect.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcadvect.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcadvect.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcadvect.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcadvect.o: /usr/include/ieee854.h mcglobal.h sunpos.h mcground.h
+$(OBJDIR)/mcadvect.o: mchemparse.h mpdata.h
+$(OBJDIR)/mpdata.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mpdata.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mpdata.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mpdata.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mpdata.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mpdata.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mpdata.o: /usr/include/string.h
+$(OBJDIR)/mpdata.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stdarg.h
+$(OBJDIR)/mpdata.o: /usr/include/math.h /usr/include/huge_val.h
+$(OBJDIR)/mpdata.o: /usr/include/endian.h /usr/include/bytesex.h
+$(OBJDIR)/mpdata.o: /usr/include/nan.h
+$(OBJDIR)/mpdata.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mpdata.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mpdata.o: /usr/include/ieee854.h mcglobal.h mpdata.h
+$(OBJDIR)/mchemsyntax.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mchemsyntax.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mchemsyntax.o: /usr/include/string.h /usr/include/features.h
+$(OBJDIR)/mchemsyntax.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mchemsyntax.o: mcglobal.h mchemparse.h
+$(OBJDIR)/mcheminp.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcheminp.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcheminp.o: /usr/include/string.h /usr/include/features.h
+$(OBJDIR)/mcheminp.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcheminp.o: /usr/include/stdlib.h /usr/include/errno.h
+$(OBJDIR)/mcheminp.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+$(OBJDIR)/mcheminp.o: /usr/include/alloca.h mcglobal.h mchemsyntax.h
+$(OBJDIR)/mcheminp.o: mchemparse.h
+$(OBJDIR)/mchem.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mchem.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mchem.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mchem.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mchem.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mchem.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mchem.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mchem.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mchem.o: /usr/include/bits/mathcalls.h mcglobal.h sunpos.h
-$(OBJDIR)/mchem.o: mcground.h mchemparse.h mchem.h matrix.h mcparallel.h
-$(OBJDIR)/mchemparse.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mchemparse.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mchemparse.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mchemparse.o: /usr/include/_G_config.h
-$(OBJDIR)/mchemparse.o: /usr/include/bits/stdio_lim.h /usr/include/stdlib.h
-$(OBJDIR)/mchemparse.o: /usr/include/sys/types.h /usr/include/time.h
-$(OBJDIR)/mchemparse.o: /usr/include/endian.h /usr/include/bits/endian.h
-$(OBJDIR)/mchemparse.o: /usr/include/sys/select.h /usr/include/bits/select.h
-$(OBJDIR)/mchemparse.o: /usr/include/bits/sigset.h
-$(OBJDIR)/mchemparse.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mchem.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mchem.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mchem.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mchem.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mchem.o: /usr/include/ieee854.h mcglobal.h sunpos.h mcground.h
+$(OBJDIR)/mchem.o: mchemparse.h mchem.h matrix.h mcparallel.h
+$(OBJDIR)/mchemparse.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mchemparse.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mchemparse.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mchemparse.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mchemparse.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mchemparse.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mchemparse.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mchemparse.o: /usr/include/bits/huge_val.h
-$(OBJDIR)/mchemparse.o: /usr/include/bits/mathdef.h
-$(OBJDIR)/mchemparse.o: /usr/include/bits/mathcalls.h matrix.h mcglobal.h
-$(OBJDIR)/mchemparse.o: sunpos.h mcground.h mcparse.h mc_group.hh
-$(OBJDIR)/mchemparse.o: mchemparse.h
+$(OBJDIR)/mchemparse.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mchemparse.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mchemparse.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mchemparse.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mchemparse.o: /usr/include/ieee854.h matrix.h mcglobal.h sunpos.h
+$(OBJDIR)/mchemparse.o: mcground.h mcparse.h mc_group.hh mchemparse.h
+$(OBJDIR)/matrix.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
 $(OBJDIR)/matrix.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/matrix.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/matrix.o: /usr/include/sys/types.h /usr/include/bits/types.h
-$(OBJDIR)/matrix.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/matrix.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/matrix.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/matrix.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/matrix.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/matrix.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/matrix.o: /usr/include/bits/mathcalls.h matrix.h
-$(OBJDIR)/mcclouds.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcclouds.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcclouds.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcclouds.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcclouds.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcclouds.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcclouds.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcclouds.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcclouds.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/matrix.o: /usr/include/sys/cdefs.h /usr/include/errno.h
+$(OBJDIR)/matrix.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+$(OBJDIR)/matrix.o: /usr/include/alloca.h /usr/include/string.h
+$(OBJDIR)/matrix.o: /usr/include/math.h /usr/include/huge_val.h
+$(OBJDIR)/matrix.o: /usr/include/endian.h /usr/include/bytesex.h
+$(OBJDIR)/matrix.o: /usr/include/nan.h
+$(OBJDIR)/matrix.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/matrix.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/matrix.o: /usr/include/ieee854.h matrix.h
+$(OBJDIR)/mcclouds.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcclouds.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcclouds.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcclouds.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcclouds.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcclouds.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcclouds.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcclouds.o: /usr/include/bits/huge_val.h
-$(OBJDIR)/mcclouds.o: /usr/include/bits/mathdef.h
-$(OBJDIR)/mcclouds.o: /usr/include/bits/mathcalls.h sunpos.h mcglobal.h
-$(OBJDIR)/mcclouds.o: mcground.h mcpress.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/sys/cdefs.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/gnu/stubs.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/bits/types.h /usr/include/libio.h
+$(OBJDIR)/mcclouds.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcclouds.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcclouds.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcclouds.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcclouds.o: /usr/include/ieee854.h sunpos.h mcglobal.h mcground.h
+$(OBJDIR)/mcclouds.o: mcpress.h
+$(OBJDIR)/mcgroundclasses.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcgroundclasses.o: /usr/include/stdio.h /usr/include/libio.h
 $(OBJDIR)/mcgroundclasses.o: /usr/include/_G_config.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/bits/endian.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/sys/select.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/bits/select.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/bits/sigset.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/sys/sysmacros.h
-$(OBJDIR)/mcgroundclasses.o: /usr/include/alloca.h /usr/include/string.h
-$(OBJDIR)/mcgroundclasses.o: mcglobal.h sunpos.h mcground.h mcparse.h
-$(OBJDIR)/mcgroundclasses.o: mc_group.hh mcgroundclasses.h
+$(OBJDIR)/mcgroundclasses.o: /usr/include/sys/cdefs.h /usr/include/stdlib.h
+$(OBJDIR)/mcgroundclasses.o: /usr/include/features.h /usr/include/errno.h
+$(OBJDIR)/mcgroundclasses.o: /usr/include/linux/errno.h
+$(OBJDIR)/mcgroundclasses.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mcgroundclasses.o: /usr/include/string.h mcglobal.h sunpos.h
+$(OBJDIR)/mcgroundclasses.o: mcground.h mcparse.h mc_group.hh
+$(OBJDIR)/mcgroundclasses.o: mcgroundclasses.h
+$(OBJDIR)/mcspecial.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
 $(OBJDIR)/mcspecial.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/mcspecial.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcspecial.o: /usr/include/sys/types.h /usr/include/bits/types.h
-$(OBJDIR)/mcspecial.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcspecial.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcspecial.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcspecial.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mcspecial.o: /usr/include/math.h /usr/include/bits/huge_val.h
-$(OBJDIR)/mcspecial.o: /usr/include/bits/mathdef.h
-$(OBJDIR)/mcspecial.o: /usr/include/bits/mathcalls.h
-$(OBJDIR)/mckeps.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mckeps.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mckeps.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mckeps.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mckeps.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mckeps.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mckeps.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mckeps.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mckeps.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mckeps.o: /usr/include/math.h /usr/include/bits/huge_val.h
-$(OBJDIR)/mckeps.o: /usr/include/bits/mathdef.h /usr/include/bits/mathcalls.h
-$(OBJDIR)/mckeps.o: mcglobal.h sunpos.h mcground.h mchemparse.h
-$(OBJDIR)/mcnest.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcnest.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcnest.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcnest.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcnest.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcnest.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcnest.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcnest.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcnest.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcspecial.o: /usr/include/sys/cdefs.h /usr/include/errno.h
+$(OBJDIR)/mcspecial.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+$(OBJDIR)/mcspecial.o: /usr/include/alloca.h /usr/include/math.h
+$(OBJDIR)/mcspecial.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcspecial.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcspecial.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcspecial.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcspecial.o: /usr/include/ieee854.h
+$(OBJDIR)/mckeps.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mckeps.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mckeps.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mckeps.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mckeps.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mckeps.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mckeps.o: /usr/include/math.h /usr/include/huge_val.h
+$(OBJDIR)/mckeps.o: /usr/include/endian.h /usr/include/bytesex.h
+$(OBJDIR)/mckeps.o: /usr/include/nan.h
+$(OBJDIR)/mckeps.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mckeps.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mckeps.o: /usr/include/ieee854.h mcglobal.h sunpos.h mcground.h
+$(OBJDIR)/mckeps.o: mchemparse.h
+$(OBJDIR)/mcnest.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcnest.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcnest.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcnest.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcnest.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcnest.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcnest.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcnest.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mcnest.o: /usr/include/bits/mathcalls.h /usr/local/include/netcdf.h
-$(OBJDIR)/mcnest.o: /usr/include/errno.h /usr/include/bits/errno.h
-$(OBJDIR)/mcnest.o: /usr/include/linux/errno.h /usr/include/asm/errno.h
+$(OBJDIR)/mcnest.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcnest.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcnest.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcnest.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcnest.o: /usr/include/ieee854.h /usr/local/include/netcdf.h
 $(OBJDIR)/mcnest.o: mcglobal.h sunpos.h mcground.h mcparse.h mc_group.hh
-$(OBJDIR)/mcnest.o: mcnest.h mcprint.h
-$(OBJDIR)/mcppm.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/mcppm.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/mcppm.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/mcppm.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/mcppm.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/mcppm.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/mcppm.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/mcppm.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/mcppm.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mcnest.o: mcnest.h
+$(OBJDIR)/mcppm.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mcppm.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mcppm.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcppm.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mcppm.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mcppm.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mcppm.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcppm.o: /usr/include/bits/huge_val.h /usr/include/bits/mathdef.h
-$(OBJDIR)/mcppm.o: /usr/include/bits/mathcalls.h mcglobal.h mcppm.h sunpos.h
+$(OBJDIR)/mcppm.o: /usr/include/huge_val.h /usr/include/endian.h
+$(OBJDIR)/mcppm.o: /usr/include/bytesex.h /usr/include/nan.h
+$(OBJDIR)/mcppm.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
+$(OBJDIR)/mcppm.o: /usr/include/values.h /usr/include/ieee754.h
+$(OBJDIR)/mcppm.o: /usr/include/ieee854.h mcglobal.h mcppm.h sunpos.h
 $(OBJDIR)/mcppm.o: mcground.h mchemparse.h
 $(OBJDIR)/mc_module.o: mc_module.hh mc_variable.hh mc_section.hh
-$(OBJDIR)/mc_module.o: mc_commands.hh /usr/include/stdio.h
-$(OBJDIR)/mc_module.o: /usr/include/features.h /usr/include/sys/cdefs.h
-$(OBJDIR)/mc_module.o: /usr/include/gnu/stubs.h /usr/include/bits/types.h
-$(OBJDIR)/mc_module.o: /usr/include/libio.h /usr/include/_G_config.h
-$(OBJDIR)/mc_module.o: /usr/include/bits/stdio_lim.h /usr/include/stdlib.h
-$(OBJDIR)/mc_module.o: /usr/include/sys/types.h /usr/include/time.h
-$(OBJDIR)/mc_module.o: /usr/include/endian.h /usr/include/bits/endian.h
-$(OBJDIR)/mc_module.o: /usr/include/sys/select.h /usr/include/bits/select.h
-$(OBJDIR)/mc_module.o: /usr/include/bits/sigset.h
-$(OBJDIR)/mc_module.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
-$(OBJDIR)/mc_module.o: mcparse.h mc_group.hh mc_group.t
-$(OBJDIR)/mc_variable.o: mc_variable.hh /usr/include/stdio.h
-$(OBJDIR)/mc_variable.o: /usr/include/features.h /usr/include/sys/cdefs.h
-$(OBJDIR)/mc_variable.o: /usr/include/gnu/stubs.h /usr/include/bits/types.h
-$(OBJDIR)/mc_variable.o: /usr/include/libio.h /usr/include/_G_config.h
-$(OBJDIR)/mc_variable.o: /usr/include/bits/stdio_lim.h /usr/include/stdlib.h
-$(OBJDIR)/mc_variable.o: /usr/include/sys/types.h /usr/include/time.h
-$(OBJDIR)/mc_variable.o: /usr/include/endian.h /usr/include/bits/endian.h
-$(OBJDIR)/mc_variable.o: /usr/include/sys/select.h /usr/include/bits/select.h
-$(OBJDIR)/mc_variable.o: /usr/include/bits/sigset.h
-$(OBJDIR)/mc_variable.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mc_module.o: mc_commands.hh
+$(OBJDIR)/mc_module.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mc_variable.o: mc_variable.hh
+$(OBJDIR)/mc_variable.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mc_variable.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mc_variable.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mc_variable.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mc_variable.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mc_variable.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mc_variable.o: /usr/include/string.h mcground.h mc_group.hh
 $(OBJDIR)/mc_variable.o: mcparse.h mc_group.t
-$(OBJDIR)/mc_section.o: mc_section.hh /usr/include/stdio.h
-$(OBJDIR)/mc_section.o: /usr/include/features.h /usr/include/sys/cdefs.h
-$(OBJDIR)/mc_section.o: /usr/include/gnu/stubs.h /usr/include/bits/types.h
-$(OBJDIR)/mc_section.o: /usr/include/libio.h /usr/include/_G_config.h
-$(OBJDIR)/mc_section.o: /usr/include/bits/stdio_lim.h /usr/include/string.h
+$(OBJDIR)/mc_section.o: mc_section.hh
+$(OBJDIR)/mc_section.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mc_section.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mc_section.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mc_section.o: /usr/include/string.h /usr/include/features.h
 $(OBJDIR)/mc_section.o: mcglobal.h mcrely.h mcnest.h
-$(OBJDIR)/mc_commands.o: mc_commands.hh /usr/include/stdio.h
-$(OBJDIR)/mc_commands.o: /usr/include/features.h /usr/include/sys/cdefs.h
-$(OBJDIR)/mc_commands.o: /usr/include/gnu/stubs.h /usr/include/bits/types.h
-$(OBJDIR)/mc_commands.o: /usr/include/libio.h /usr/include/_G_config.h
-$(OBJDIR)/mc_commands.o: /usr/include/bits/stdio_lim.h /usr/include/stdlib.h
-$(OBJDIR)/mc_commands.o: /usr/include/sys/types.h /usr/include/time.h
-$(OBJDIR)/mc_commands.o: /usr/include/endian.h /usr/include/bits/endian.h
-$(OBJDIR)/mc_commands.o: /usr/include/sys/select.h /usr/include/bits/select.h
-$(OBJDIR)/mc_commands.o: /usr/include/bits/sigset.h
-$(OBJDIR)/mc_commands.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/mc_commands.o: mc_commands.hh
+$(OBJDIR)/mc_commands.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/mc_commands.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/mc_commands.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mc_commands.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/mc_commands.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/mc_commands.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/mc_commands.o: /usr/include/string.h mc_group.t mcparse.h
 $(OBJDIR)/mc_commands.o: mc_group.hh
-$(OBJDIR)/puffemit.o: /usr/include/stdio.h /usr/include/features.h
-$(OBJDIR)/puffemit.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
-$(OBJDIR)/puffemit.o: /usr/include/bits/types.h /usr/include/libio.h
-$(OBJDIR)/puffemit.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
-$(OBJDIR)/puffemit.o: /usr/include/stdlib.h /usr/include/sys/types.h
-$(OBJDIR)/puffemit.o: /usr/include/time.h /usr/include/endian.h
-$(OBJDIR)/puffemit.o: /usr/include/bits/endian.h /usr/include/sys/select.h
-$(OBJDIR)/puffemit.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
-$(OBJDIR)/puffemit.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
+$(OBJDIR)/puffemit.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
+$(OBJDIR)/puffemit.o: /usr/include/stdio.h /usr/include/libio.h
+$(OBJDIR)/puffemit.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
+$(OBJDIR)/puffemit.o: /usr/include/stdlib.h /usr/include/features.h
+$(OBJDIR)/puffemit.o: /usr/include/errno.h /usr/include/linux/errno.h
+$(OBJDIR)/puffemit.o: /usr/include/asm/errno.h /usr/include/alloca.h
 $(OBJDIR)/puffemit.o: /usr/include/string.h mcglobal.h mcground.h mcparse.h
 $(OBJDIR)/puffemit.o: mc_group.hh mc_section.hh mc_group.t mc_commands.hh
 $(OBJDIR)/puffemit.o: mc_variable.hh mc_module.hh

@@ -10,11 +10,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef SVR4
+  #include <alloca.h>
+#endif
 #include <math.h>
 #include <mc_group.hh>
 #include <mc_group.t>
 #include "mcextrad.h"
 #include "mcglobal.h"
+
+#define LNEW(n,t) (t *)alloca((n) * sizeof(t))
 
 #ifdef GCC
 
@@ -104,7 +109,7 @@ void PhotoDiss1::Setup(int nw_in, const double *wl_in, int nz)
   wl = wl_in;
   f0 = new double[nwl];
   f1 = new double[nwl];
-  double *sig = new double[nwl];
+  double *sig = (double *)alloca(nwl * sizeof(double));
   if (!f0 || !f1 || !sig) {
     fprintf(stderr, "FATAL: Error allocating memory in \"PhotoDiss1::Setup\"\n");
     exit (3);
@@ -118,7 +123,6 @@ void PhotoDiss1::Setup(int nw_in, const double *wl_in, int nz)
   }
   for (from = 0; from < nwl && f0[from] == 0. && f1[from] == 0.; from++);
   for (to = nwl-1; to >= 0 && f0[to] == 0. && f1[to] == 0.; to--);
-  delete sig;
 }
 
 void PhotoDiss1::SetCol(int serialid, const double *tabs_in, const double *airc)
@@ -170,8 +174,8 @@ void PhotoDiss2a::Setup(int nwl_in, const double *wl_in, int nz)
   so3 = new double[nwl*nz];
   q = new double[nwl*nz];
   double *p1, *p2;
-  p1 = new double[nwl];
-  p2 = new double[nwl];
+  p1 = (double *)alloca(nwl * sizeof(double));
+  p2 = (double *)alloca(nwl * sizeof(double));
   if (!s226 || !s263 || !s298 || !qy || !qexp || !p1 || !p2 ||
       !xso3 || !so3 || !q) {
     fprintf(stderr, "FATAL: Unable to allocate memory in PhotoDiss2a::PhotoDiss2a\n");
@@ -199,7 +203,6 @@ void PhotoDiss2a::Setup(int nwl_in, const double *wl_in, int nz)
       qy[i] = qexp[i] = 0.;
   }
   setup = 1;
-  delete p1, p2;
 }
 
 PhotoDiss2a::~PhotoDiss2a(void)

@@ -42,7 +42,7 @@ typedef struct  {
 	 IRdown,	/* IR-Einstrahlung */
 	 Rdir,		/* Direkte Strahlung */
 	 Rdiff,		/* Diffuse Strahlung */
-	 z,		/* Hoehe des ersten Punktes */
+    //	 z,		/* Hoehe des ersten Punktes */ removed with v2.2
 	 ustar,		/* friction velocity */
 	 phim,		/* Similarity function for momentum */
 	 phit,		/* Similarity function for scalars */
@@ -57,7 +57,7 @@ typedef struct  {
 	 snow_intensity,/* Intensity of snow */
 	 cum_snow,      /* Cumulated snow */
 	 groundclass;   /* Class of GroundCell */
-  EntitySet a;          /* Zustand der Luft im ersten Punkt oberhalb des Bodens */
+  //  EntitySet a;  Entity-set has been removed from v2.2
   Vector slope;		/* Vektor senkrecht zur Oberfläche */
   short int firstabove;
 }  GroundParam;

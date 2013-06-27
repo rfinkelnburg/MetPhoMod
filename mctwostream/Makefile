@@ -20,7 +20,7 @@ $(OBJDIR)/%.o : %.f
 	f77 -qextname -c $(FFLAGS) $(GENFLAGS) $*.f -o $@
 
 libtwostream.a : $(OBJS)
-	ar -r $(OBJDIR)/libmctwostream.a $(OBJS)
+	ar -r libmctwostream.a $(OBJS)
 
 depend :
 	makedepend -I.. -p'$$(OBJDIR)/' $(SRC)
@@ -56,16 +56,16 @@ $(OBJDIR)/mcphotodiss.o: /usr/include/sys/localedef.h
 $(OBJDIR)/mcphotodiss.o: /usr/include/sys/lc_core.h /usr/include/locale.h
 $(OBJDIR)/mcphotodiss.o: /usr/include/sys/localedef31.h /usr/include/string.h
 $(OBJDIR)/mcphotodiss.o: /usr/include/math.h ../mc_group.t mcextrad.h
-$(OBJDIR)/mcphotodiss.o: ../mcglobal.h ph_o3data.c ph2data.c ph3data.c
-$(OBJDIR)/mcphotodiss.o: ph4data.c ph6data.c ph7data.c ph11data.c ph12data.c
-$(OBJDIR)/mcphotodiss.o: ph13data.c ph14data.c
-$(OBJDIR)/mctwostream.o: mctwostream.h ../mcground.h ../mcglobal.h
-$(OBJDIR)/mctwostream.o: ../sunpos.h ../mc_module.hh ../mc_variable.hh
-$(OBJDIR)/mctwostream.o: ../mcparse.h ../mc_group.hh ../mc_section.hh
-$(OBJDIR)/mctwostream.o: ../mc_commands.hh mcphotodiss.h mcapd.h
-$(OBJDIR)/mctwostream.o: /usr/include/stddef.h /usr/include/standards.h
-$(OBJDIR)/mctwostream.o: /usr/include/stdio.h /usr/include/va_list.h
-$(OBJDIR)/mctwostream.o: /usr/include/sys/types.h /usr/include/sys/inttypes.h
+$(OBJDIR)/mcphotodiss.o: mcglobal.h ph_o3data.c ph2data.c ph3data.c ph4data.c
+$(OBJDIR)/mcphotodiss.o: ph6data.c ph7data.c ph11data.c ph12data.c ph13data.c
+$(OBJDIR)/mcphotodiss.o: ph14data.c
+$(OBJDIR)/mctwostream.o: mctwostream.h ../mcground.h mcglobal.h sunpos.h
+$(OBJDIR)/mctwostream.o: ../mc_module.hh ../mc_variable.hh ../mcparse.h
+$(OBJDIR)/mctwostream.o: ../mc_group.hh ../mc_section.hh ../mc_commands.hh
+$(OBJDIR)/mctwostream.o: mcphotodiss.h mcapd.h /usr/include/stddef.h
+$(OBJDIR)/mctwostream.o: /usr/include/standards.h /usr/include/stdio.h
+$(OBJDIR)/mctwostream.o: /usr/include/va_list.h /usr/include/sys/types.h
+$(OBJDIR)/mctwostream.o: /usr/include/sys/inttypes.h
 $(OBJDIR)/mctwostream.o: /usr/include/sys/m_types.h /usr/include/sys/limits.h
 $(OBJDIR)/mctwostream.o: /usr/include/float.h /usr/include/stdlib.h
 $(OBJDIR)/mctwostream.o: /usr/include/sys/wait.h /usr/include/sys/resource.h

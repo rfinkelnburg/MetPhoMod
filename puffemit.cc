@@ -108,13 +108,13 @@ Puff::Puff(const Ident &ident, InputSection section)
 
 void Puff::Emit(long actime)
 {
-  int fa, loc;
+  int fa, loc, k;
   if (!triggered && actime >= time) {
     loc = cx*row + cy;
-    fa = ground[loc].firstabove;
-    for (int k = fa; k < fa+3; k++) {
-      data[loc + k*layer] = conz / density[k];
-    }
+    k = fa = ground[loc].firstabove;
+    //    for (k = fa; k < fa+3; k++) {
+    data[loc + k*layer] = conz / density[k];
+    //}
     triggered = 1;
   }
 }

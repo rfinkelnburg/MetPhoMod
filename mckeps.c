@@ -123,6 +123,64 @@ void SolveKEps(short kimp, int tinc, double sh, double bu, double tr,
   }
 }
 
+void PrintCSum(int i, int j, Entity et)
+{
+  int k, hloc;
+  double sum;
+  hloc = i*row + j;
+  sum = 0.;
+  for (k = ground[hloc].firstabove; k < nz; k++)
+    sum += g[et][hloc+k*layer] * level[k] * density[k];
+  printf("%lf", sum);
+}
+
+
+void CalcHorizontalDiffusion(long tinc, Entity et)
+{
+  int nm, i, j, k, loc, hloc;
+  double *flux;
+  nm = (nx > ny ? nx : ny);
+  flux = new double[nm];
+  if (!flux) {
+    fprintf(stderr, "Unable to allocate memory in CalcHorizontalDiffusion...aborting\n");
+    exit (1);
+  }
+  // Diffusion in the W-E direction
+  for (k = nz; k--; )
+    for (j = ny; --j; ) {
+      hloc = k*layer + j;
+      // Calculate the fluxes
+      for (i = nx; i--; ) {
+	loc = hloc + row*i;
+	flux[i] = -1.5 * (Km[loc] + Km[loc+row]) *
+	  (g[et][loc+row] - g[et][loc]) * dxi;
+      }
+      // Calculate the new concentrations
+      for (i = nx; --i; ) {
+	loc = hloc + row*i;
+	g[et][loc] -= tinc * dxi * (flux[i] - flux[i-1]);
+      }
+    }
+  // Diffusion in the N-S direction
+  for (k = nz; k--; )
+    for (i = nx; --i; ) {
+      hloc = k*layer + row*i;
+      // Calculate the fluxes
+      for (j = ny; j--; ) {
+	loc = hloc + j;
+	flux[j] = -1.5 * (Km[loc] + Km[loc+1]) *
+	  (g[et][loc+1] - g[et][loc]) * dyi;
+      }
+      // Calculate the new concentrations
+      for (j = ny; --j; ) {
+	loc = hloc + j;
+	g[et][loc] -= tinc * dyi * (flux[j] - flux[j-1]); 
+      }
+    }
+  delete flux;
+}
+
+
 void CalcKTurb(long tinc, long chemtinc)
 {
   double tmp, tm[MAXZGRID][3], Kf[MAXZGRID];
@@ -149,45 +207,37 @@ void CalcKTurb(long tinc, long chemtinc)
       k = ground[hloc].firstabove;
       if (k >= nzm)  continue;
       loc = hloc + k*layer;
-      if (groundinterface)  {
-	Kf[k] = (ground[hloc].zL > 0. ? 10. : Km[loc]) /
-	  (0.5 * (level[k] + ground[hloc].z)) * 
-	  density[k];
-	/* Falls stabile Lage werden unterstes Niveau und Bodenniveau zusammengelegt.
-	   Hier mit einem rel. hohen Austauschparameter realisiert */
-      }
-      else  Kf[k] = 0.;
-      for (k++; k < nz; k++)  {
+      for ( ; k < nzm; k++)  {
         loc = hloc + k*layer;
-        Kf[k] = Km[loc] / ldiff[k] * 0.5 * (density[k] + density[k-1]);
+        Kf[k] = Km[loc+layer] / ldiff[k+1] * 0.5 * (density[k+1] + density[k]);
       }
       for (l = 2; (l--) - !(nsubs && chemtinc); )  {
         ltinc = (l ? tinc : chemtinc);
         k = ground[hloc].firstabove;
         loc = hloc + k*layer;
-        tmp = ltinc / (ground[hloc].z * density[k] / ground[hloc].slope.z);
-        tm[k][1] = 1. + tmp * Kf[k];
-        tm[k][2] = -tmp * Kf[k];
-        for (; k < nzm; k++)  {
+	tmp = ltinc / (level[k] * density[k]);
+	tm[k][1] = 1. + tmp * Kf[k];
+	tm[k][2] = -tmp * Kf[k];
+        for (k++; k < nzm; k++)  {
           loc = hloc + k*layer;
           tmp = ltinc / (level[k] * density[k]);
-          tm[k+1][0] = -tmp * Kf[k];
-          tm[k+1][1] = 1. + tmp*(Kf[k] + Kf[k+1]);
-          tm[k+1][2] = -tmp * Kf[k+1];
+          tm[k][0] = -tmp * Kf[k-1];
+          tm[k][1] = 1. + tmp*(Kf[k] + Kf[k-1]);
+          tm[k][2] = -tmp * Kf[k];
         }
         loc = hloc + k*layer;
         tmp = ltinc / (level[k] * density[k]);
-        tm[k+1][0] = -tmp * Kf[k];
-        tm[k+1][1] = 1. + tmp * Kf[k];
+        tm[k][0] = -tmp * Kf[k-1];
+        tm[k][1] = 1. + tmp * Kf[k-1];
         /* Konditioniere Matrix zum schnellen Lösen des Systems */
-        for (k = ground[hloc].firstabove+1; k <= nz; k++)  {
+        for (k = ground[hloc].firstabove+1; k < nz; k++)  {
           tm[k][0] = tmp = -tm[k][0] / tm[k-1][1];
           tm[k][1] += tmp * tm[k-1][2];
         }
-        for (k = nzm; k >= ground[hloc].firstabove; k--)  {
+        for (k = nzm-1; k >= ground[hloc].firstabove; k--)  {
           tm[k][2] = -tm[k][2] / tm[k+1][1];
         }
-        for (k = ground[hloc].firstabove; k <= nz; k++)
+        for (k = ground[hloc].firstabove; k < nz; k++)
           tm[k][1] = 1. / tm[k][1];
         /* Rechne jetzt die Turbulenz fuer alle Meteo-Groessen mit einer
            impliziten Integration */
@@ -195,44 +245,42 @@ void CalcKTurb(long tinc, long chemtinc)
           if (et < SUBS || subst[et-SUBS+1].do_transport)  {
             k = ground[hloc].firstabove;
             loc = hloc + k * layer;
-            if (l && groundinterface)
-              g[et][loc] += tm[k+1][0] * ground[hloc].a[et];
             for (k++ ; k < nz; k++)  {
               loc = hloc + k*layer;
-              g[et][loc] += tm[k+1][0] * g[et][loc-layer];
+              g[et][loc] += tm[k][0] * g[et][loc-layer];
             }
-            for (k-- ; --k >= ground[hloc].firstabove;)  {
+            for (k--; --k >= ground[hloc].firstabove; )  {
               loc = hloc + k*layer;
-              g[et][loc] += tm[k+1][2] * g[et][loc+layer];
+              g[et][loc] += tm[k][2] * g[et][loc+layer];
             }
-            k++;
-            loc = hloc + k * layer;
-            if (l && groundinterface)  {
-              ground[hloc].a[et] += tm[k][2] * g[et][loc];
-              ground[hloc].a[et] *= tm[k][1];
-            }
-            for ( ; k < nz; k++)  {
+            for (k++ ; k < nz; k++)  {
               loc = hloc + k*layer;
-              g[et][loc] *= tm[k+1][1];
+              g[et][loc] *= tm[k][1];
             }
           }  /* if (et */
-        Kf[ground[hloc].firstabove] = 0.;
       }  /* for (l */
     }
+  if (horizontaldiffusion) {
+    /*    for (et = HUMIDITY+1; et--; )
+	  CalcHorizontalDiffusion(tinc, et); */
+    for (et = SUBS; et < maxentity; et++)
+      if (subst[et-SUBS+1].do_transport)
+	CalcHorizontalDiffusion(tinc, et);
+  }
 }
 
-/*
+
 void PrintESum(char *cmmt, int hloc)
 {
   double sum;
   int i;
   i = ground[hloc].firstabove;
-  sum = g[EPS][hloc+i*layer] * density[i] * (ground[hloc].z + level[i]*0.5);
+  sum = g[EPS][hloc+i*layer] * density[i] * level[i]*0.5;
   for (i++; i < nz; i++)
     sum += g[EPS][hloc+i*layer] * density[i] * ldiff[i];
   printf("%s %12lg\n", cmmt, sum);
 }
-*/
+
 
 void CalcFaceTurb(long tinc, int hloc, double *tr)
 {
@@ -255,7 +303,7 @@ void CalcFaceTurb(long tinc, int hloc, double *tr)
       loc += layer;
     }
     k = ground[hloc].firstabove;
-    tmp = tinc / ((0.5 * level[k] + ground[hloc].z) * 0.5 * (density[k-1] + density[k]));
+    tmp = tinc / (level[k] * 0.5 * density[k]);
     tm[k][1] = 1. + tmp*Kf[k];
     tm[k][2] = -tmp * Kf[k];
     for (k++; k < nz; k++)  {
@@ -304,7 +352,7 @@ void CalcKm(int hloc)
   k = ground[hloc].firstabove;
   loc = hloc + k*layer;
   if (groundinterface)
-    Km[loc] = karman * ground[hloc].ustar * ground[hloc].z / ground[hloc].phim;
+    Km[loc] = karman * ground[hloc].ustar * 0.5 * level[k] / ground[hloc].phim;
   else
     Km[loc] = 0.;
   for (k++; k < nz; k++)  {
@@ -353,7 +401,7 @@ void CalcKEpsilon(long tinc)
       if (groundinterface)  {
 	g[TKE][loc] = 3.3333 * sqr(gr->ustar);
 	g[EPS][loc] = sqr(gr->ustar) * gr->ustar /
-	  (gr->z * karman) * (gr->phim - gr->zL);
+	  (0.5 * level[k] * karman) * (gr->phim - gr->zL);
       }
       CalcFaceTurb(tinc, hloc, transport);
 /* Vermutlich keine gute Idee!!      CalcKm(hloc); */

@@ -62,7 +62,7 @@ char *GetOptionFromVal(int val, InputType type)
 {
   int i;
   for (i = MAXOPTION; i >=0 && (option[i].type != type || option[i].value != val) ; i--);
-  return (i >= 0 ? option[i].name : (char *)"no valid default!");
+  return (i >= 0 ? option[i].name : "no valid default!");
 }
 
 void PrintHelp(int argc, char **argv)

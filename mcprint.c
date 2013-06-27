@@ -518,8 +518,6 @@ int WriteOutData(long actime, BOOL ignoretime)
                 *cptr[2] = i-!printwithborder;
                 if (v->v->dims != ALL_DIM || k < 0 || k >= ground[i*row+j].firstabove)
                   nc_put_var1_double(o->fid, v->datid, coord, GetVal(v->v, i, j, k, TRUE));
-/*                else
-                  nc_put_var1_double(o->fid, v->datid, coord, &FillValue);  */
               }
             }
           }

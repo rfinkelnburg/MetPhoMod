@@ -525,8 +525,8 @@ void CalcHydrostaticPressure(void)
       				   ldiff[k]);
     }
   k--;
-  while (--k >= -1)  {
-    tempmid = (k >= 0 ? (avg[TEMP*nz+k+1] + avg[TEMP*nz+k]) * 0.5 : avg[TEMP*nz+k+1]);
+  while (--k >= 0)  {
+    tempmid = (avg[TEMP*nz+k+1] + avg[TEMP*nz+k]) * 0.5;
     densmid = (density[k+1] + density[k]) * 0.5;
     pressmid = (pp[k+1] + pp[k]) * 0.5;
     for (i = nx+1; i--; )  {
@@ -537,17 +537,15 @@ void CalcHydrostaticPressure(void)
         if (i == nx && (eastbordertype & DATABORDER))  ik = nxm;
         if (!j && (southbordertype & DATABORDER))  jk = 1;
         if (j == ny && (northbordertype & DATABORDER))  jk = nym;
-        if (k >= 0 && !pstat[loc])  {
+        if (!pstat[loc])  {
           press[loc] = NextPress((g[TEMP][(k+1)*layer+ik*row+jk] + g[TEMP][k*layer+ik*row+jk]) * 0.5,
             	    tempmid,
             	    densmid,
             	    press[loc+layer],
             	    pressmid,
             	    ldiff[k+1]);
-          if (!i || !j || i >= nx || j >= ny)  press[loc] = press[loc];
 	}
         else if (!pstat[loc+layer])
-          if (k >= 0)
             press[loc] = press[loc] = NextPress((g[TEMP][(k+1)*layer+ik*row+jk] +
                     g[TEMP][k*layer+ik*row+jk]) * 0.5,
             	    tempmid,
@@ -555,13 +553,6 @@ void CalcHydrostaticPressure(void)
             	    press[loc+layer],
             	    pressmid,
             	    0.5 * level[k]);
-          else
-            press[loc] = NextPress(g[TEMP][ik*row+jk],
-            	    tempmid,
-            	    densmid,
-            	    press[loc+layer],
-            	    pressmid,
-            	    0.5 * level[0]);
       }
     }
   }

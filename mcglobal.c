@@ -48,7 +48,7 @@ double Xlong, Xlat, Coriol3, Coriol2, timezonediff, topprecipwater, stratozone,
 BOOL printresid, plausible, withchem, groundinterface,
      advection, windadvection, printwithborder, cloudwater, cloudice,
      timeddump, dampinglayer, workeronthishost, shortwaveradiation,
-     calcsoiltemp, radiationtype;
+     calcsoiltemp, radiationtype, horizontaldiffusion;
 int smiord, smnonos;
 double *westborder, *eastborder;
 double *northborder, *southborder;

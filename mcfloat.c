@@ -7,7 +7,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pwd.h>
 #ifdef SVR4
  #include <floatingpoint.h>
 #endif
@@ -121,7 +120,7 @@ void InstallSignalHandler()
 void MailTheTime()
 {
   int p[2];
-  char cmmt[256], *uid;
+  char cmmt[256];
   static char uname[30];
   pipe(p);
   if (fork())  {
@@ -134,9 +133,8 @@ void MailTheTime()
   else  {
     close(0); dup(p[0]);
     close(p[0]); close(p[1]);
-    uid = getpwuid(geteuid())->pw_name;
-    printf("Sending mail to %s\n", uid);
-    execlp("mail", "mail", uid, (char *)0);
+    printf("Sending mail to %s\n", cuserid(uname));
+    execlp("mail", "mail", cuserid(uname), (char *)0);
     printf("Start of mail did not succeed!\n");
     exit (0);
   }

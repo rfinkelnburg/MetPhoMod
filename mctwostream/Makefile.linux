@@ -1,35 +1,27 @@
-opt:
-	make libtwostream.a FFLAGS=-O3 CFLAGS="-O3 -ffast-math "$(DEFS) \
-	     OBJDIR=optm STRIP=ls
-
-debug:
-	make libtwostream.a FFLAGS=-g CFLAGS="-g "$(DEFS) \
-	     OBJDIR=dbg STRIP=ls
-
-
-OBJS= $(OBJDIR)/mcphotodiss.o $(OBJDIR)/mctwostream.o \
+OBJS= $(OBJDIR)/mctwostream.o $(OBJDIR)/mcphotodiss.o \
       $(OBJDIR)/mcabsorb.o $(OBJDIR)/mcextrad.o\
       $(OBJDIR)/mc_inter3.o $(OBJDIR)/mc_rtlink.o $(OBJDIR)/mc_schu.o \
       $(OBJDIR)/mc_seto2.o $(OBJDIR)/mc_sphers.o $(OBJDIR)/mc_ps2str.o \
-      $(OBJDIR)/mc_fchap.o
+      $(OBJDIR)/mc_fchap.o $(OBJDIR)/mcapd.o
 
-SRC= mcphotodiss.c mctwostream.c mcabsorb.c mcextrad.c
+SRC= mcphotodiss.c mctwostream.c mcabsorb.c mcextrad.c mcapd.c
 
 CC=g++
+F77=g77
 
 CFLAGS2=-I..
 
 $(OBJDIR)/%.o : %.c
-	$(CC) -c $(CFLAGS) $(CFLAGS2) $(INCLUDE) -DFERRET_FORMAT $*.c -o $@
+	$(CC) -c $(CFLAGS) $(CFLAGS2) $(GENFLAGS) $(INCLUDE) -DFERRET_FORMAT $*.c -o $@
 
 $(OBJDIR)/%.o : %.cc
-	$(CC) -c $(CFLAGS) $(CFLAGS2) $(INCLUDE) -DFERRET_FORMAT $*.cc -o $@
+	$(CC) -c $(CFLAGS) $(CFLAGS2) $(GENFLAGS) $(INCLUDE) -DFERRET_FORMAT $*.cc -o $@
 
 $(OBJDIR)/%.o : %.f
-	f77 -c $(FFLAGS) $*.f -o $@
+	$(F77) -c $(FFLAGS) $(GENFLAGS) $*.f -o $@
 
 libtwostream.a : $(OBJS)
-	ar -r libmctwostream.a $(OBJS)
+	ar -r $(OBJDIR)/libmctwostream.a $(OBJS)
 
 depend :
 	makedepend -I.. -p'$$(OBJDIR)/' $(SRC)
@@ -50,51 +42,70 @@ $(OBJDIR)/mc_ps2str.o : mc_ps2str.f params
 
 # DO NOT DELETE
 
-$(OBJDIR)/mcphotodiss.o: mcphotodiss.h ../mc_group.hh
-$(OBJDIR)/mcphotodiss.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/stdio.h /usr/include/libio.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/errno.h /usr/include/linux/errno.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mcphotodiss.o: mcphotodiss.h mcapd.h ../mc_group.hh
+$(OBJDIR)/mcphotodiss.o: /usr/include/stdio.h /usr/include/features.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/bits/types.h /usr/include/libio.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/_G_config.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/bits/stdio_lim.h /usr/include/stdlib.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/sys/types.h /usr/include/time.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/endian.h /usr/include/bits/endian.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/sys/select.h /usr/include/bits/select.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/bits/sigset.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
 $(OBJDIR)/mcphotodiss.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/huge_val.h /usr/include/endian.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/bytesex.h /usr/include/nan.h
-$(OBJDIR)/mcphotodiss.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/values.h /usr/include/ieee754.h
-$(OBJDIR)/mcphotodiss.o: /usr/include/ieee854.h ../mc_group.t mcextrad.h
-$(OBJDIR)/mcphotodiss.o: ../mcglobal.h ph_o3data.c ph2data.c ph3data.c
-$(OBJDIR)/mcphotodiss.o: ph4data.c
+$(OBJDIR)/mcphotodiss.o: /usr/include/bits/huge_val.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/bits/mathdef.h
+$(OBJDIR)/mcphotodiss.o: /usr/include/bits/mathcalls.h ../mc_group.t
+$(OBJDIR)/mcphotodiss.o: mcextrad.h ../mcglobal.h ph_o3data.c ph2data.c
+$(OBJDIR)/mcphotodiss.o: ph3data.c ph4data.c ph6data.c ph7data.c ph11data.c
+$(OBJDIR)/mcphotodiss.o: ph12data.c ph13data.c ph14data.c
 $(OBJDIR)/mctwostream.o: mctwostream.h ../mcground.h ../mcglobal.h
 $(OBJDIR)/mctwostream.o: ../sunpos.h ../mc_module.hh ../mc_variable.hh
 $(OBJDIR)/mctwostream.o: ../mcparse.h ../mc_group.hh ../mc_section.hh
-$(OBJDIR)/mctwostream.o: ../mc_commands.hh
-$(OBJDIR)/mctwostream.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
-$(OBJDIR)/mctwostream.o: /usr/include/stdio.h /usr/include/libio.h
-$(OBJDIR)/mctwostream.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
-$(OBJDIR)/mctwostream.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/mctwostream.o: /usr/include/errno.h /usr/include/linux/errno.h
-$(OBJDIR)/mctwostream.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mctwostream.o: ../mc_commands.hh mcphotodiss.h mcapd.h
+$(OBJDIR)/mctwostream.o: /usr/include/stdio.h /usr/include/features.h
+$(OBJDIR)/mctwostream.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+$(OBJDIR)/mctwostream.o: /usr/include/bits/types.h /usr/include/libio.h
+$(OBJDIR)/mctwostream.o: /usr/include/_G_config.h
+$(OBJDIR)/mctwostream.o: /usr/include/bits/stdio_lim.h /usr/include/stdlib.h
+$(OBJDIR)/mctwostream.o: /usr/include/sys/types.h /usr/include/time.h
+$(OBJDIR)/mctwostream.o: /usr/include/endian.h /usr/include/bits/endian.h
+$(OBJDIR)/mctwostream.o: /usr/include/sys/select.h /usr/include/bits/select.h
+$(OBJDIR)/mctwostream.o: /usr/include/bits/sigset.h
+$(OBJDIR)/mctwostream.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
 $(OBJDIR)/mctwostream.o: /usr/include/string.h /usr/include/math.h
-$(OBJDIR)/mctwostream.o: /usr/include/huge_val.h /usr/include/endian.h
-$(OBJDIR)/mctwostream.o: /usr/include/bytesex.h /usr/include/nan.h
-$(OBJDIR)/mctwostream.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/float.h
-$(OBJDIR)/mctwostream.o: /usr/include/values.h /usr/include/ieee754.h
-$(OBJDIR)/mctwostream.o: /usr/include/ieee854.h ../mchemparse.h ../mchem.h
-$(OBJDIR)/mctwostream.o: mcphotodiss.h mcabsorb.h mcextrad.h
-$(OBJDIR)/mcabsorb.o: mcabsorb.h
-$(OBJDIR)/mcabsorb.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
-$(OBJDIR)/mcabsorb.o: /usr/include/stdio.h /usr/include/libio.h
-$(OBJDIR)/mcabsorb.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
-$(OBJDIR)/mcabsorb.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/mcabsorb.o: /usr/include/errno.h /usr/include/linux/errno.h
-$(OBJDIR)/mcabsorb.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mctwostream.o: /usr/include/bits/huge_val.h
+$(OBJDIR)/mctwostream.o: /usr/include/bits/mathdef.h
+$(OBJDIR)/mctwostream.o: /usr/include/bits/mathcalls.h ../mchemparse.h
+$(OBJDIR)/mctwostream.o: ../mchem.h mcabsorb.h mcextrad.h
+$(OBJDIR)/mcabsorb.o: mcabsorb.h /usr/include/stdio.h /usr/include/features.h
+$(OBJDIR)/mcabsorb.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+$(OBJDIR)/mcabsorb.o: /usr/include/bits/types.h /usr/include/libio.h
+$(OBJDIR)/mcabsorb.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+$(OBJDIR)/mcabsorb.o: /usr/include/stdlib.h /usr/include/sys/types.h
+$(OBJDIR)/mcabsorb.o: /usr/include/time.h /usr/include/endian.h
+$(OBJDIR)/mcabsorb.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+$(OBJDIR)/mcabsorb.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+$(OBJDIR)/mcabsorb.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
 $(OBJDIR)/mcabsorb.o: ../mcparse.h ../mc_group.hh mcextrad.h ph_o3data.c
-$(OBJDIR)/mcextrad.o: mcextrad.h
-$(OBJDIR)/mcextrad.o: /usr/lib/gcc-lib/i486-linux/2.7.2.1/include/stddef.h
-$(OBJDIR)/mcextrad.o: /usr/include/stdio.h /usr/include/libio.h
-$(OBJDIR)/mcextrad.o: /usr/include/_G_config.h /usr/include/sys/cdefs.h
-$(OBJDIR)/mcextrad.o: /usr/include/stdlib.h /usr/include/features.h
-$(OBJDIR)/mcextrad.o: /usr/include/errno.h /usr/include/linux/errno.h
-$(OBJDIR)/mcextrad.o: /usr/include/asm/errno.h /usr/include/alloca.h
+$(OBJDIR)/mcextrad.o: mcextrad.h /usr/include/stdio.h /usr/include/features.h
+$(OBJDIR)/mcextrad.o: /usr/include/sys/cdefs.h /usr/include/gnu/stubs.h
+$(OBJDIR)/mcextrad.o: /usr/include/bits/types.h /usr/include/libio.h
+$(OBJDIR)/mcextrad.o: /usr/include/_G_config.h /usr/include/bits/stdio_lim.h
+$(OBJDIR)/mcextrad.o: /usr/include/stdlib.h /usr/include/sys/types.h
+$(OBJDIR)/mcextrad.o: /usr/include/time.h /usr/include/endian.h
+$(OBJDIR)/mcextrad.o: /usr/include/bits/endian.h /usr/include/sys/select.h
+$(OBJDIR)/mcextrad.o: /usr/include/bits/select.h /usr/include/bits/sigset.h
+$(OBJDIR)/mcextrad.o: /usr/include/sys/sysmacros.h /usr/include/alloca.h
 $(OBJDIR)/mcextrad.o: ../mcparse.h ../mc_group.hh
+$(OBJDIR)/mcapd.o: mcapd.h ../mc_group.hh /usr/include/stdio.h
+$(OBJDIR)/mcapd.o: /usr/include/features.h /usr/include/sys/cdefs.h
+$(OBJDIR)/mcapd.o: /usr/include/gnu/stubs.h /usr/include/bits/types.h
+$(OBJDIR)/mcapd.o: /usr/include/libio.h /usr/include/_G_config.h
+$(OBJDIR)/mcapd.o: /usr/include/bits/stdio_lim.h /usr/include/stdlib.h
+$(OBJDIR)/mcapd.o: /usr/include/sys/types.h /usr/include/time.h
+$(OBJDIR)/mcapd.o: /usr/include/endian.h /usr/include/bits/endian.h
+$(OBJDIR)/mcapd.o: /usr/include/sys/select.h /usr/include/bits/select.h
+$(OBJDIR)/mcapd.o: /usr/include/bits/sigset.h /usr/include/sys/sysmacros.h
+$(OBJDIR)/mcapd.o: /usr/include/alloca.h ../mc_group.t

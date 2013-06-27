@@ -158,7 +158,7 @@ char *OnNestDomain(RelyCmmd cmd, VarDesc *v)
        }
        return ("Nesting-domain");
     case VAL_OF_RELVAR :
-       return (char *)(firstdomain ? "defined" : "undefined");
+       return (firstdomain ? "defined" : "undefined");
   }
   return (NULL);
 }
@@ -322,7 +322,7 @@ double Interpolate(double *mesh, double x, double y, int k)
   double xf, yf, xfm, yfm, r;
   int xi, yi, loc;
   x /= dx; y /= dy;
-  xi = (int)x; yi = (int)y;
+  xi = x; yi = y;
   xf = x - xi; yf = y - yi;
   xfm = 1. - xf; yfm = 1. - yf;
   loc = yi + xi * row + k * layer;
@@ -410,15 +410,15 @@ void WriteToDomainFiles(long actime)
 			d->xorigin, d->yorigin,
 			- d->dy * d->sina, d->dy * d->cosa);
       WriteToDomainFile(actime, entry, d->east, d, d->nny,
-			long(d->xorigin + (d->nnx-1) * d->dx * d->cosa),
-			long(d->yorigin + (d->nnx-1) * d->dx * d->sina),
+			d->xorigin + (d->nnx-1) * d->dx * d->cosa,
+			d->yorigin + (d->nnx-1) * d->dx * d->sina,
 			- d->dy * d->sina, d->dy * d->cosa);
       WriteToDomainFile(actime, entry, d->south, d, d->nnx,
 			d->xorigin, d->yorigin,
 			d->dx * d->cosa, d->dy * d->sina);
       WriteToDomainFile(actime, entry, d->north, d, d->nnx,
-			long(d->xorigin - (d->nny-1) * d->dy * d->sina),
-			long(d->yorigin + (d->nny-1) * d->dy * d->cosa),
+			d->xorigin - (d->nny-1) * d->dy * d->sina,
+			d->yorigin + (d->nny-1) * d->dy * d->cosa,
 			d->dx * d->cosa, d->dy * d->sina);
       WritePressureToFile(actime, entry, d->top, d->nnx, d->nny,
 			  d->xorigin, d->yorigin,

@@ -148,6 +148,11 @@ void PrintEnergy()
 }
 */
 
+void PrintSurfTemp(char *cmmt)
+{
+  printf("%s: %lf\n", cmmt, ground[4].Tg[0]);
+}
+
 void SequentialLoop(int startupflags)
 {
   int i;
@@ -183,7 +188,7 @@ void SequentialLoop(int startupflags)
     InterpolateToCenter(1., pressuretype == NONHYDROSTATIC);
     if (coriolistype != NOCORIOLIS)  ApplyCoriolis(tinc);
     if (filtertype != NO_FILTER)  {
-      SetBoundary(WWIND);
+      SetBoundary(WWIND+1);
       switch (filtertype)  {
         case PEPPER_FILTER :
            for (i = nz; i--; )
@@ -361,7 +366,7 @@ void WorkersLoop(int startupflags)
 	InterpolateToCenter(1., pressuretype == NONHYDROSTATIC);
 	if (coriolistype != NOCORIOLIS)  ApplyCoriolis(tinc);
 	if (filtertype != NO_FILTER)  {
-	  SetBoundary(WWIND);   /* Set Boundary for Wind only */
+	  SetBoundary(WWIND+1);   /* Set Boundary for Wind only */
 	  switch (filtertype)  {
 	  case PEPPER_FILTER :
 	    for (i = nz; i--; )
@@ -508,9 +513,9 @@ int main(int argc, char *argv[])
 #ifdef PARALLEL
   IsMaster();
   if (master) {
-    printf("MetPhoMod   Rel. Pre-2.1-0\n" SYSTEM " parallel Version - " DATE "\n\n");
+    printf("MetPhoMod   Rel. 2.2\n" SYSTEM " parallel Version - " DATE "\n\n");
 #else
-  printf("MetPhoMod   Rel. Pre-2.1-0\n" SYSTEM " sequential Version - " DATE "\n\n");
+  printf("MetPhoMod   Rel. 2.2\n" SYSTEM " sequential Version - " DATE "\n\n");
 #endif
     if (argc > 1 && (!strcmp(argv[1], "-help") || !strcmp(argv[1], "-h")))  {
       McInterface::modmanager.Init1();

@@ -87,7 +87,7 @@ extern double Xlong, Xlat, Coriol3, Coriol2, timezonediff, topprecipwater,
 extern BOOL groundinterface, printresid, plausible, withchem,
 	    advection, windadvection, printwithborder, cloudwater, cloudice,
 	    timeddump, dampinglayer, workeronthishost, shortwaveradiation,
-            calcsoiltemp, radiationtype;
+            calcsoiltemp, radiationtype, horizontaldiffusion;
 extern int smiord, smnonos;
 extern double *westborder, *eastborder;
 extern double *northborder, *southborder;
