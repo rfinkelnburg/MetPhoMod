@@ -74,7 +74,7 @@ void PrintConcentrations(void)
   printf("\n");
 }
 
-double AirConz(int k, int i, int j)
+double AirConz(int k, int i, int j, struct VarDesc *v)
 {
   int loc;
   double pr;
@@ -83,7 +83,7 @@ double AirConz(int k, int i, int j)
   return (pr / (AbsoluteTemp(g[TEMP][loc], pr, g[HUMIDITY][loc]) * kBoltz) * 1.e-6);
 }
 
-void CalcRateConstants(double T, double dt, double density, double press, double cozen)
+void CalcRateConstants(double T, double dt, double density, double press, double cozen, double *photorate)
 {
   double Ti, secans, conv, cloudfact, Rsum, M, k0t, kinft;
   Reaction *r;
@@ -123,7 +123,9 @@ void CalcRateConstants(double T, double dt, double density, double press, double
          break; 
       case PHOTODISS3 :
          r->Ke = (daytime ? r->K * pow(cozen, r->N) * exp(-r->EoR * secans) * dt : 0.);
-         break; 
+         break;
+      case TWOSTREAM :
+	r->Ke = photorate[r->pos] * dt;
     }
     r->Ke *= spow(conv, r->netot-1);
   }
@@ -265,17 +267,103 @@ void PrintMatrix(int n, Matrix m, double *v)
   }
 }
 
-void ChemicalTimeStep(long dt, Vector *sunpos)
+void BoxChemStep(int i, int j, int k, long dt,
+		 const Vector *sunpos, double *photorate)
 {
   double f[MAXSUBST], vv[MAXSUBST], fact, err, origh2o;
-  int indx[MAXSUBST], i, j, k, il, jl, nit;
+  int indx[MAXSUBST], il, jl, nit;
+  ProductionDesc *p;
+  BOOL repeatit = FALSE;
+  gli.i = i; gli.j = j; gli.k = k; gli.loc = k*layer+i*row+j;
+  origh2o = g[HUMIDITY][gli.loc];
+  g[HUMIDITY][gli.loc] *= 1.608e9;
+  CalcRateConstants(AbsoluteTemp(g[TEMP][gli.loc], pp[k], origh2o),
+		    dt, density[k], pp[k], sunpos->z, photorate);
+  for (il = nsubst; il--; )  {
+    /*	  if (CONZ(subst[il].subs) < 0.)
+	  printf("Warning: Substance %s got negative: %le\n",
+	  subst[il].name, CONZ(subst[il].subs)); */
+    if (CONZ(subst[il].subs) < 1.e-30)  /* can't really handle such small concentrations */
+      CONZ(subst[il].subs) = 0.;
+  }
+  CalcRates();
+  for (il = nsubst; il--; )  {
+    subst[il].oldc = CONZ(subst[il].subs);
+    subst[il].take_as_fast = 0;
+  }
+  /*	CalcSlowSubst();  Aenderung am 17.9.97! */
+  do  {
+    nit = 0;
+    while (1)  {
+      jcb = CalculateJacobian(jcb);
+      err = 0.;
+      for (il = nfast; il--; )  {
+	err += fabs((f[il] = CONZ(fast[il]->subs) - fast[il]->dcdt - fast[il]->oldc) /
+		    (CONZ(fast[il]->subs) > 1.e-7 ? CONZ(fast[il]->subs) : 1.));
+      }
+      if (!repeatit && err < 1.e-5)  break;
+      if (++nit > 500)  {
+	printf("Chemistry is not converging at point %i/%i/%i\n", i, j, k);
+	PrintConcentrations();
+	PrintRates(REACTION_RATES);
+	break;
+      }
+      if (LUdecomp(nfast, jcb, indx, &fact, vv))  {
+	printf("Matrix is singular (in ChemicalTimeStep) at point %d/%d/%d!\n",
+	       i, j, k);
+	plausible = FALSE;
+	return;
+      }
+      /*	    if (i == 10 && j == 4 && k == 1)
+		    PrintRates(REACTION_RATES);
+		    PrintMatrix(nfast, jcb, f);  */
+      LUbackSub(nfast, jcb, indx, f);
+      repeatit = 0;
+      for (il = nfast; il--; )  {
+	CONZ(fast[il]->subs) -= f[il];
+	if (CONZ(fast[il]->subs) < 0.)  {
+	  /*		printf("Warning: Substance %s got negative: %le\n",
+			fast[il]->name, CONZ(fast[il]->subs));  */
+	  CONZ(fast[il]->subs) = 0.;
+	  repeatit = 1;
+	}
+      }
+    }
+    repeatit = 0;
+    CalcSlowSubst();
+    for (il = nfast; il--; )  {
+      if (!fast[il]->oldc || 
+	  fabs(CONZ(fast[il]->subs) - fast[il]->oldc) < 0.1 * fast[il]->oldc)  {
+	fast[il]->take_as_fast = 0;
+      }
+    }
+    for (il = nslow; il--; )  {
+      if (CONZ(slow[il]->subs) < 0.)  {
+	slow[il]->take_as_fast = repeatit = 1;
+      }
+    }
+    if (repeatit)  {
+      printf("repeating chemistry at point %i/%i/%i\n", i, j, k);
+      CalcRates();
+    }
+  }  while (repeatit);
+  for (p = prodd; p; p = p->next)
+    p->pps[gli.loc] = (CONZ(p->subs) - subst[p->subs - SUBS + 1].oldc) /
+      (double)dt;
+  g[HUMIDITY][k*layer+i*row+j] = origh2o;
+}
+
+void ChemicalTimeStep(long dt, const Vector *sunpos)
+{
+  int i, j, k;
   int xs, xe;
   ProductionDesc *p;
-  BOOL repeatit;
+  BOOL repeatit = FALSE;
   NoteTransport(FALSE);
 #ifdef PARALLEL
   if (parallel && !master)  {
-    xs = mfirstx; xe = mlastx;
+    xs = mfirstx + !mfirstx;
+    xe = mlastx - rightest;
   }
   else  {
 #endif
@@ -285,92 +373,6 @@ void ChemicalTimeStep(long dt, Vector *sunpos)
 #endif
   for (i = xs; i < xe; i++)
     for (j = ny; --j; )
-      for (k = ground[i*row+j].firstabove; k < nz; k++)  {
-	gli.i = i; gli.j = j; gli.k = k; gli.loc = k*layer+i*row+j;
-	origh2o = g[HUMIDITY][gli.loc];
-	g[HUMIDITY][gli.loc] *= 1.608e9;
-        CalcRateConstants(AbsoluteTemp(g[TEMP][gli.loc], pp[k], origh2o),
-           dt, density[k], pp[k], sunpos->z);
-	for (il = nsubst; il--; )  {
-/*	  if (CONZ(subst[il].subs) < 0.)
-             printf("Warning: Substance %s got negative: %le\n",
-		    subst[il].name, CONZ(subst[il].subs)); */
-	  if (CONZ(subst[il].subs) < 1.e-30)  /* can't really handle such small concentrations */
-	    CONZ(subst[il].subs) = 0.;
-	}
-	CalcRates();
-	for (il = nsubst; il--; )  {
-	  subst[il].oldc = CONZ(subst[il].subs);
-	  subst[il].take_as_fast = 0;
-	}
-/*	CalcSlowSubst();  Aenderung am 17.9.97! */
-	do  {
-	  nit = 0;
-	  while (1)  {
-	    jcb = CalculateJacobian(jcb);
-	    err = 0.;
-	    for (il = nfast; il--; )  {
-	      err += fabs((f[il] = CONZ(fast[il]->subs) - fast[il]->dcdt - fast[il]->oldc) /
-			  (CONZ(fast[il]->subs) > 1.e-7 ? CONZ(fast[il]->subs) : 1.));
-	    }
-	    if (!repeatit && err < 1.e-5)  break;
-	    if (++nit > 500)  {
-	      printf("Chemistry is not converging at point %i/%i/%i\n", i, j, k);
-	      PrintConcentrations();
-	      PrintRates(REACTION_RATES);
-	      break;
-	    }
-	    if (LUdecomp(nfast, jcb, indx, &fact, vv))  {
-	      printf("Matrix is singular (in ChemicalTimeStep) at point %d/%d/%d!\n",
-	         i, j, k);
-	      plausible = FALSE;
-	      return;
-	    }
-/*	    if (i == 10 && j == 4 && k == 1)
-	      PrintRates(REACTION_RATES);
-	      PrintMatrix(nfast, jcb, f);  */
-	    LUbackSub(nfast, jcb, indx, f);
-            repeatit = 0;
-	    for (il = nfast; il--; )  {
-	      CONZ(fast[il]->subs) -= f[il];
-	      if (CONZ(fast[il]->subs) < 0.)  {
-/*		printf("Warning: Substance %s got negative: %le\n",
-		   fast[il]->name, CONZ(fast[il]->subs));  */
-		CONZ(fast[il]->subs) = 0.;
-		repeatit = 1;
-	      }
-	    }
-	  }
-	  repeatit = 0;
-	  CalcSlowSubst();
-	  for (il = nfast; il--; )  {
-            if (!fast[il]->oldc || 
-                fabs(CONZ(fast[il]->subs) - fast[il]->oldc) < 0.1 * fast[il]->oldc)  {
-              fast[il]->take_as_fast = 0;
-            }
-	  }
-	  for (il = nslow; il--; )  {
-            if (CONZ(slow[il]->subs) < 0.)  {
-              slow[il]->take_as_fast = repeatit = 1;
-            }
-	  }
-	  if (repeatit)  {
-	    printf("repeating chemistry at point %i/%i/%i\n", i, j, k);
-	    CalcRates();
-	  }
-	}  while (repeatit);
-/*	if ((k == 0 && i == 19 && j == 40 && actime % 3600 == 0) ||
-	    (k == 0 && i == 19 && j == 39 && actime % 3600 == 0) ||
-	    (k == 0 && i == 69 && j == 35 && actime % 3600 == 0))
-	  PrintRates(REACTION_RATES);
-	if (k == 2 && i == 1 && j == 1 && actime == 43200)  {
-	  PrintConcentrations();
-	  PrintRates(REACTION_CONSTANTS);
-	  PrintRates(REACTION_RATES);
-	}  */
-	for (p = prodd; p; p = p->next)
-	  p->pps[gli.loc] = (CONZ(p->subs) - subst[p->subs - SUBS + 1].oldc) /
-	     (double)dt;
-	g[HUMIDITY][k*layer+i*row+j] = origh2o;
-      }
+      for (k = ground[i*row+j].firstabove; k < nz; k++)
+	BoxChemStep(i, j, k, dt, sunpos, NULL);
 }

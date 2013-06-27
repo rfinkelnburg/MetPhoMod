@@ -12,6 +12,18 @@
 #include "sunpos.h"
 #include "mcground.h"
 #include "mcfloat.h"
+#ifdef PARALLEL
+#include "mcparallel.h"
+#endif
+#include "mctwostream/mctwostream.h"
+#ifdef SVR4
+#include "mc_group.hh"
+#include "mc_group.t"  // Solaris scheint einen Fehler in der Behandlung
+
+template class Group<PhotoDissReact>;
+template class GroupEnumerator<PhotoDissReact>;
+
+#endif                 // von Templates zu haben und braucht einen Workaround
 
 static double visc = 1.5e-5,
 	      grc = 0.0962;
@@ -41,6 +53,8 @@ void CalcSlope(Vector *v, int i, int j)
   vxz = topo[(i < nxm ? i+1 : i)*row+j] - topo[(i > 1 ? i-1 : i)*row+j];
   vyz = topo[i*row+(j < nym ? j+1 : j)] - topo[i*row+(j > 1 ? j-1 : j)];
   v->x = -vxz / dx; v->y = -vyz / dy; v->z = 1.;
+  r = 1. / sqrt(v->x * v->x + v->y * v->y + v->z * v->z);
+  v->x *= r; v->y *= r; v->z *= r;
 }
 
 BOOL PrecipitableLength(double *P, int i, int j, Vector *vsun, double CosZa)
@@ -94,17 +108,15 @@ double EpsCO2(double pp)
 
 double AbsoluteTemp(double theta, double press, double humid)
 {
-  double tabs;
-  tabs = theta * pow(press / 1.e5, Kappa) / (1. + 0.61 * humid);
-  return (tabs);  /* For better debugging reasons */
+  return (theta * pow(press / 1.e5, Kappa) / (1. + 0.61 * humid));
 }
 
-double AbsolutePointTemp(int k, int i, int j)
+double AbsolutePointTemp(int k, int i, int j, struct VarDesc *v)
 {
   return AbsoluteTemp(g[TEMP][k*layer+i*row+j], pp[k], g[HUMIDITY][k*layer+i*row+j]);
 }
 
-double EquivalentPointTemp(int k, int i, int j)
+double EquivalentPointTemp(int k, int i, int j, struct VarDesc *v)
 {
   int loc;
   double quot;
@@ -113,7 +125,7 @@ double EquivalentPointTemp(int k, int i, int j)
   return (g[TEMP][loc] * exp(quot));
 }
 
-double RelativeHumidity(int k, int i, int j)
+double RelativeHumidity(int k, int i, int j, struct VarDesc *v)
 {
   double qsat,T;
   int loc;
@@ -248,15 +260,14 @@ Stattdessen:
 }
 
 
-double ShortWaveRadiation(int i, int j, int k, Vector vsun, GroundParam *gr)
+void ShortWaveRadiation(int i, int j, int k, Vector vsun, GroundParam *gr)
 {
   BOOL shadow;
   double asunslope, dP, m, awv, aoz, tt, CosZa, I, scatt, Dr, Dri, f, x, tmp;
-  double Qr, dTg, gsig;
+  double dTg, gsig;
   Vector vslope;
   St = S0 * Rd;
   CosZa = vsun.z;
-  Qr = 0.;
   k = gr->firstabove;
   gsig = 1. - gr->sigf;
   if (vsun.z > 0.01)  {     /* Tag: Es existiert kurzwellige Strahlung */
@@ -282,28 +293,23 @@ double ShortWaveRadiation(int i, int j, int k, Vector vsun, GroundParam *gr)
 #endif
       (gsig * gr->albedo - gr->sigf * gr->albedof);    /* Scatter von unten */
     f = sqr(cos(acos(gr->slope.z) / 2.));      /* Anteil des sichtbaren Himmels; Pielke p.406 */
-    tmp = 1. - gsig * gr->albedo - gr->sigf * gr->albedof;
 #ifdef RADFACT
-    Qr = (gr->Rdiff = gr->Rg = Rdifffact[k*layer+i*row+j] * (Dr * f + (I + Dr) * (1. - f) * (1. - tmp))) * tmp;
+    gr->Rdiff = gr->Rg = Rdifffact[k*layer+i*row+j] * (Dr * f + (I + Dr) * (1. - f) * (1. - gr->absorb));
     /* Einfluss der schiefen Oberflaeche */
     if (!shadow)  {
       gr->Rg += (gr->Rdir = Rdirfact[k*layer+i*row+j] * I * asunslope);
-      Qr += Rdirfact[k*layer+i*row+j] * (I * asunslope * tmp);
 #else
-    Qr = (gr->Rdiff = gr->Rg = Rdifffact[k] * (Dr * f + (I + Dr) * (1. - f) * (1. - tmp))) * tmp;
+    gr->Rdiff = gr->Rg = Rdifffact[k] * (Dr * f + (I + Dr) * (1. - f) * (1. - gr->absorb));
     /* Einfluss der schiefen Oberflaeche */
     if (!shadow)  {
       gr->Rg += (gr->Rdir = Rdirfact[k] * I * asunslope);
-      Qr += Rdirfact[k] * (I * asunslope * tmp);
 #endif
       /* Direkte Strahlung */
     }
   }
   else  {
     gr->Rg = 0.;
-    Qr = 0;
   }
-  return (Qr);
 }
 
 void CalcWTheta(int k, GroundParam *gr, double Vm,
@@ -321,10 +327,16 @@ void CalcWTheta(int k, GroundParam *gr, double Vm,
   int nit;
   /* Die Variablennamen richten sich nach den entsprechenden Formeln in Pielke 84 */
 /*  Vm = sqrt(sqr(gr->a[UWIND]) + sqr(gr->a[VWIND])); */
-  if (Vm < 0.01)  Vm = 0.01;
+  if (Vm < 0.1)  Vm = 0.1;
   logzz0 = log(gr->z / gr->z0);
-  grtheta = VirtPot(gr->Tg[0], gr->a[HUMIDITY], tmp = 0.5*(pp[k-1]+pp[k]));
-  dgrtheta = (1. + 0.61*gr->a[HUMIDITY]) * pow(1.e5 / tmp, Kappa);
+  if (calcsoiltemp) {
+    grtheta = VirtPot(gr->Tg[0], gr->a[HUMIDITY], tmp = 0.5*(pp[k-1]+pp[k]));
+    dgrtheta = (1. + 0.61*gr->a[HUMIDITY]) * pow(1.e5 / tmp, Kappa);
+  }
+  else {
+    grtheta = gr->Tg[0];
+    dgrtheta = 1.;
+  }
   wtheta = gr->wtheta;
 give_it_a_new_try :
   zL = gr->zL;
@@ -352,7 +364,7 @@ give_it_a_new_try :
     dpsit = -6.35;
   }
   gr->ustar = ustar = karman * Vm / (logzz0 - psim);
-  tmp = 0.74 * logzz0 - psit;
+  tmp = 0.74 * (logzz0 - psit);
   if (tmp < 0.01)  {
     gr->zL = 0.;
     goto give_it_a_new_try;
@@ -361,22 +373,29 @@ give_it_a_new_try :
   gr->phim = phim; gr->phit = phit;
   dustar = ustar / (logzz0 - psim) * dpsim;
   chih = karman / tmp;
-  dchih = chih / tmp * dpsit;
+  dchih = chih / tmp * dpsit * 0.74;
   if (ustar <= 0.)  {
 /*    printf("inplausible ustar : %le  (%i/%i/%i) zL = %lf\n", ustar, i, j, k, zL); */
     gr->zL /= 10.;
     goto give_it_a_new_try;
   }
-  tmp3 = pow(ustar * gr->z0 / visc, 0.45);
-  tmp = chih /         /* Pielke: 7-49, 7-50 */
-        (1. + chih * grc / karman * tmp3);
-  thetastar = tmp * (gr->a[TEMP] - grtheta);       /* Pielke: 7-49, 7-50 */
-  tmp2 = dchih / (1. + chih * grc / karman * tmp3) -
-         chih / sqr(1. + chih * grc / karman * tmp3) *
-         grc / karman * (dchih * tmp3 +
-                         0.45 * chih * tmp3 * dustar / ustar);
-  dthetastar[DZL] = tmp2 * (gr->a[TEMP] - grtheta);
-  dthetastar[DTG] =  - tmp * dgrtheta;
+  if (calcsoiltemp) {
+    tmp3 = pow(ustar * gr->z0 / visc, 0.45);
+    tmp = chih /         /* Pielke: 7-49, 7-50 */
+          (1. + chih * grc / karman * tmp3);
+    thetastar = tmp * (gr->a[TEMP] - grtheta);       /* Pielke: 7-49, 7-50 */
+    tmp2 = dchih / (1. + chih * grc / karman * tmp3) -
+           chih / sqr(1. + chih * grc / karman * tmp3) *
+           grc / karman * (dchih * tmp3 +
+                           0.45 * chih * tmp3 * dustar / ustar);
+    dthetastar[DZL] = tmp2 * (gr->a[TEMP] - grtheta);
+    dthetastar[DTG] =  - tmp * dgrtheta;
+  }
+  else {
+    thetastar = (gr->a[TEMP] - grtheta) / tmp;
+    dthetastar[DZL] = thetastar / tmp * dpsit * 0.74;
+    dthetastar[DTG] = -dgrtheta / tmp;
+  }
   dthetastar[DTF] = 0.;
   *wthetag = -gsig * ustar * thetastar;
   dwthetag[DZL] = -gsig * (dustar * thetastar + ustar * dthetastar[DZL]);
@@ -584,6 +603,19 @@ void GroundInterface(double timeofday, int dayofyear, double tinc, Vector *sunpo
   Gradient dwthetag, dwthetaf, dwqg, dwqf, dzL, dFg, dFf;
   Vector vsun;
   GroundParam *gr, bestgr;
+  int xs, xe;
+#ifdef PARALLEL
+  if (parallel && master) return; // Nothing to do in this case
+  if (parallel && !master)  {
+    xs = mfirstx + !mfirstx;
+    xe = mlastx - rightest;
+  }
+  else  {
+#endif
+    xs = 1; xe = nx;
+#ifdef PARALLEL
+  }
+#endif
   dayofyear += (int)(timeofday / 24);
   dayofyear = (dayofyear-1) % 365 + 1;
   timeofday = fmod(timeofday, 24.);
@@ -591,115 +623,141 @@ void GroundInterface(double timeofday, int dayofyear, double tinc, Vector *sunpo
   SunVector(&vsun, dayofyear, timeofday, Xlong, Xlat, timezonediff);
   TurnVect(&vsun, turnmapangle);
   *sunpos = vsun;
-  for (i = nx; --i; )
-    for (j = ny; --j; )  {
-      gr = ground+i*row+j;
-      gr->blh = CalcBoundaryLayerHeight(gr, i, j);
-      novegetation = gr->sigf == 0.;
-      k = gr->firstabove;
-      dens = 0.5 * (density[k] + density[k-1]);
-      Vm = CalcMeanWind(gr);
-      K = (shortwaveradiation ? ShortWaveRadiation(i, j, k, vsun, gr) : 0);
-      if (timeofday > 23.5)  gr->Rgcum = 0.;
-      else		     gr->Rgcum += K * tinc;
-      if (groundinterface)  {
-	L = (irtinc ? (actime % irtinc == 0 ?
-		       gr->IRdown = NewLongWaveRadiation(i, j, tinc) :
-		       gr->IRdown) : 0.);
-	ApplyIRRadiation(i*row+j, tinc);
-	Qg = GroundHeatFlux(i, j, gr, tinc);
-	dGdg = gr->ks * gr->Cg / grlevel[1];
-	gsig = 1. - gr->sigf;
-	if (!novegetation)
-          emissityratio = sigma * gr->emissityf * gr->emissity /
-	    (gr->emissity + gr->emissityf - gr->emissityf * gr->emissity);
-	else  emissityratio = 0.;
+  if (shortwaveradiation)
+    if (radiationtype)
+      twostreammodule.CalcTwoStream(vsun, Rd);
+    else {
+      for (i = nx; --i; )
+	for (j = ny; --j; )  {
+	  gr = ground+i*row+j;
+	  ShortWaveRadiation(i, j, gr->firstabove, vsun, gr);
+	}
+    }
+  if (groundinterface)
+    for (i = xs; i < xe; i++)
+      for (j = ny; --j; )  {
+	gr = ground+i*row+j;
+	gr->blh = CalcBoundaryLayerHeight(gr, i, j);
+	novegetation = gr->sigf == 0.;
+	k = gr->firstabove;
+	dens = 0.5 * (density[k] + density[k-1]);
+	Vm = CalcMeanWind(gr);
+	K = (shortwaveradiation ? gr->Rg * gr->absorb : 0);
+	if (timeofday > 23.5)  gr->Rgcum = 0.;
+	else		     gr->Rgcum += K * tinc;
+	if (calcsoiltemp) {
+	  L = (irtinc ? (actime % irtinc == 0 ?
+			 gr->IRdown = NewLongWaveRadiation(i, j, tinc) :
+			 gr->IRdown) : 0.);
+	  ApplyIRRadiation(i*row+j, tinc);
+	  Qg = GroundHeatFlux(i, j, gr, tinc);
+	  dGdg = gr->ks * gr->Cg / grlevel[1];
+	  gsig = 1. - gr->sigf;
+	  if (!novegetation)
+	    emissityratio = sigma * gr->emissityf * gr->emissity /
+	      (gr->emissity + gr->emissityf - gr->emissityf * gr->emissity);
+	  else  emissityratio = 0.;
+	}
+	else {
+	  gr->Tf = gr->Tg[0];
+	  Fg = Ff = 0.;
+	}
 	nit = 0; bestdeviat = 1.e33;
 	bestgr = *gr;
 	verystable = FALSE;
 	do  {
-          CalcWTheta(k, gr, Vm,
-                     &wthetag, &wthetaf, &zL,
-                     dwthetag, dwthetaf, &wqg, &wqf, dwqg, dwqf, dzL);
-          gr->wtheta = wthetag + wthetaf;
-          gr->wq = wqg + wqf;
-          T4g = sqr(sqr(gr->Tg[0])); T4f = sqr(sqr(gr->Tf));
-          T3g = 4. * sqr(gr->Tg[0]) * gr->Tg[0];
-          T3f = 4. * sqr(gr->Tf) * gr->Tf;
-          tmp = gr->sigf * emissityratio * (T4g - T4f);
-          Leg = gsig * sigma * gr->emissity * T4g + tmp;
-          Lef = gr->sigf * sigma * gr->emissityf * T4f - tmp;
-          Fg = gsig * (K + L * gr->emissity) - Leg - Qg - dens* (Cp * wthetag + Lc * wqg);
-          dFg[DZL] = -dens * (Cp * dwthetag[DZL] + Lc * dwqg[DZL]); 
-          dFg[DTG] = -(gsig * sigma * gr->emissity + gr->sigf * emissityratio) * T3g -
-	    dens * (Cp * dwthetag[DTG] + Lc * dwqg[DTG]) - dGdg;
-          dFg[DTF] = gr->sigf * emissityratio * T3f - dens * (Cp * dwthetag[DTF] + Lc * dwqg[DTF]);
-          if (!novegetation)  {
-            Ff = gr->sigf * (K + L * gr->emissityf) - Lef - dens* (Cp * wthetaf + Lc * wqf);
-            dFf[DZL] = -dens * (Cp * dwthetaf[DZL] + Lc * dwqf[DZL]);
-            dFf[DTG] = gr->sigf * emissityratio * T3g - dens * (Cp * dwthetaf[DTG] + Lc * dwqf[DTG]);
-            dFf[DTF] = -(gr->sigf * sigma * gr->emissityf + gr->sigf * emissityratio) * T3f -
-	      dens * (Cp * dwthetaf[DTF] + Lc * dwqf[DTF]);
-          }
-          else  Ff = 0.;
-          deviat = fabs(Fg) + fabs(Ff);
-          if (deviat < bestdeviat)  {
-            bestdeviat = deviat;
-            bestgr = *gr;
-          }
-          if (deviat < 0.01)  break;
-          zL -= gr->zL;
-          dzL[DZL] -= 1.;
-          verystable |= dzL[DZL] > 0. || gr->zL > 30.;
-          if (verystable)  {
-            if (novegetation)  {
-              dTg = -Fg / dFg[DTG];
-              dTf = deltazL = 0.;
-            }
-            else  {
-              det = dFg[DTG] * dFf[DTF] - dFg[DTF] * dFf[DTG];
-              dTg = (dFg[DTF] * Ff - dFf[DTF] * Fg) / det;
-              dTf = (dFf[DTG] * Fg - dFg[DTG] * Ff) / det;
-              deltazL = 0.;
-            }
-            gr->zL = 30.;
-          }
-          else  {
-            if (novegetation)  {
-              det = dFg[DTG] * dzL[DZL] - dFg[DZL] * dzL[DTG];
-              dTg = (dFg[DZL] * zL - dzL[DZL] * Fg) / det;
-              deltazL = (dzL[DTG] * Fg - dFg[DTG] * zL) / det;
-              dTf = 0.;
-            }
-            else  {
-              det = dFg[DTG]*dFf[DTF]*dzL[DZL] + dFg[DTF]*dFf[DZL]*dzL[DTG] + dFg[DZL]*dFf[DTG]*dzL[DTF] -
-		dFg[DZL]*dFf[DTF]*dzL[DTG] - dFg[DTG]*dFf[DZL]*dzL[DTF] - dFg[DTF]*dFf[DTG]*dzL[DZL];
-	      dTg = -(Fg*dFf[DTF]*dzL[DZL] + dFg[DTF]*dFf[DZL]*zL + dFg[DZL]*Ff*dzL[DTF] -
-	              dFg[DZL]*dFf[DTF]*zL - Fg*dFf[DZL]*dzL[DTF] - dFg[DTF]*Ff*dzL[DZL]) / det;
-	      dTf = -(dFg[DTG]*Ff*dzL[DZL] + Fg*dFf[DZL]*dzL[DTG] + dFg[DZL]*dFf[DTG]*zL -
-	              dFg[DZL]*Ff*dzL[DTG] - dFg[DTG]*dFf[DZL]*zL - Fg*dFf[DTG]*dzL[DZL]) / det;
-	      deltazL = -(dFg[DTG]*dFf[DTF]*zL + dFg[DTF]*Ff*dzL[DTG] + Fg*dFf[DTG]*dzL[DTF] -
-	                  Fg*dFf[DTF]*dzL[DTG] - dFg[DTG]*Ff*dzL[DTF] - dFg[DTF]*dFf[DTG]*zL) / det;
+	  CalcWTheta(k, gr, Vm,
+		     &wthetag, &wthetaf, &zL,
+		     dwthetag, dwthetaf, &wqg, &wqf, dwqg, dwqf, dzL);
+	  gr->wtheta = wthetag + wthetaf;
+	  gr->wq = wqg + wqf;
+	  if (calcsoiltemp) {
+	    T4g = sqr(sqr(gr->Tg[0])); T4f = sqr(sqr(gr->Tf));
+	    tmp = gr->sigf * emissityratio * (T4g - T4f);
+	    Leg = gsig * sigma * gr->emissity * T4g + tmp;
+	    Lef = gr->sigf * sigma * gr->emissityf * T4f - tmp;
+	    T3g = 4. * sqr(gr->Tg[0]) * gr->Tg[0];
+	    T3f = 4. * sqr(gr->Tf) * gr->Tf;
+	    Fg = gsig * (K + L * gr->emissity) - Leg - Qg - dens* (Cp * wthetag + Lc * wqg);
+	    dFg[DZL] = -dens * (Cp * dwthetag[DZL] + Lc * dwqg[DZL]); 
+	    dFg[DTG] = -(gsig * sigma * gr->emissity + gr->sigf * emissityratio) * T3g -
+	      dens * (Cp * dwthetag[DTG] + Lc * dwqg[DTG]) - dGdg;
+	    dFg[DTF] = gr->sigf * emissityratio * T3f - dens * (Cp * dwthetag[DTF] + Lc * dwqg[DTF]);
+	    if (!novegetation)  {
+	      Ff = gr->sigf * (K + L * gr->emissityf) - Lef - dens* (Cp * wthetaf + Lc * wqf);
+	      dFf[DZL] = -dens * (Cp * dwthetaf[DZL] + Lc * dwqf[DZL]);
+	      dFf[DTG] = gr->sigf * emissityratio * T3g - dens * (Cp * dwthetaf[DTG] + Lc * dwqf[DTG]);
+	      dFf[DTF] = -(gr->sigf * sigma * gr->emissityf + gr->sigf * emissityratio) * T3f -
+		dens * (Cp * dwthetaf[DTF] + Lc * dwqf[DTF]);
 	    }
+	    else  Ff = 0.;
+	    deviat = fabs(Fg) + fabs(Ff);
 	  }
-          Qg += dTg * dGdg;
-          gr->Tg[0] += dTg;
-          gr->Tf += dTf;
-          gr->zL += deltazL;
-          if (gr->Tg[0] < 230.)  {
-            Qg += (230. - gr->Tg[0]) * dGdg;
-            gr->Tg[0] = 230.;
-          }
-          if (gr->Tg[0] > 340.)  {
-            Qg += (340. - gr->Tg[0]) * dGdg;
-            gr->Tg[0] = 340.;
-          }
-          if (gr->Tf < 250.)  gr->Tf = 250.;
-          if (gr->Tf > 340.)  gr->Tf = 340.;
+	  else {
+	    deviat = fabs(zL - gr->zL);
+	  }
+	  zL -= gr->zL;
+	  dzL[DZL] -= 1.;
+	  if (deviat < bestdeviat)  {
+	    bestdeviat = deviat;
+	    bestgr = *gr;
+	  }
+	  if (deviat < 0.01)  break;
+	  if (calcsoiltemp) {
+	    verystable |= dzL[DZL] > 0. || gr->zL > 30.;
+	    if (verystable)  {
+	      if (novegetation)  {
+		dTg = -Fg / dFg[DTG];
+		dTf = deltazL = 0.;
+	      }
+	      else  {
+		det = dFg[DTG] * dFf[DTF] - dFg[DTF] * dFf[DTG];
+		dTg = (dFg[DTF] * Ff - dFf[DTF] * Fg) / det;
+		dTf = (dFf[DTG] * Fg - dFg[DTG] * Ff) / det;
+		deltazL = 0.;
+	      }
+	      gr->zL = 30.;
+	    }
+	    else  {
+	      if (novegetation)  {
+		det = dFg[DTG] * dzL[DZL] - dFg[DZL] * dzL[DTG];
+		dTg = (dFg[DZL] * zL - dzL[DZL] * Fg) / det;
+		deltazL = (dzL[DTG] * Fg - dFg[DTG] * zL) / det;
+		dTf = 0.;
+	      }
+	      else  {
+		det = dFg[DTG]*dFf[DTF]*dzL[DZL] + dFg[DTF]*dFf[DZL]*dzL[DTG] + dFg[DZL]*dFf[DTG]*dzL[DTF] -
+		  dFg[DZL]*dFf[DTF]*dzL[DTG] - dFg[DTG]*dFf[DZL]*dzL[DTF] - dFg[DTF]*dFf[DTG]*dzL[DZL];
+		dTg = -(Fg*dFf[DTF]*dzL[DZL] + dFg[DTF]*dFf[DZL]*zL + dFg[DZL]*Ff*dzL[DTF] -
+			dFg[DZL]*dFf[DTF]*zL - Fg*dFf[DZL]*dzL[DTF] - dFg[DTF]*Ff*dzL[DZL]) / det;
+		dTf = -(dFg[DTG]*Ff*dzL[DZL] + Fg*dFf[DZL]*dzL[DTG] + dFg[DZL]*dFf[DTG]*zL -
+			dFg[DZL]*Ff*dzL[DTG] - dFg[DTG]*dFf[DZL]*zL - Fg*dFf[DTG]*dzL[DZL]) / det;
+		deltazL = -(dFg[DTG]*dFf[DTF]*zL + dFg[DTF]*Ff*dzL[DTG] + Fg*dFf[DTG]*dzL[DTF] -
+			    Fg*dFf[DTF]*dzL[DTG] - dFg[DTG]*Ff*dzL[DTF] - dFg[DTF]*dFf[DTG]*zL) / det;
+	      }
+	    }
+	    Qg += dTg * dGdg;
+	    gr->Tg[0] += dTg;
+	    gr->Tf += dTf;
+	    if (gr->Tg[0] < 230.)  {
+	      Qg += (230. - gr->Tg[0]) * dGdg;
+	      gr->Tg[0] = 230.;
+	    }
+	    if (gr->Tg[0] > 340.)  {
+	      Qg += (340. - gr->Tg[0]) * dGdg;
+	      gr->Tg[0] = 340.;
+	    }
+	    if (gr->Tf < 250.)  gr->Tf = 250.;
+	    if (gr->Tf > 340.)  gr->Tf = 340.;
+	  }
+	  else {     /* of "if (calcsoiltemp)" */
+	    deltazL = -zL / dzL[DZL];
+	  }
+	  gr->zL += deltazL;
 	}  while (++nit < 150);
 	if (nit >= 150)  {
 	  /*        printf("Problems in finding correct Tg[0]/Tf at %i/%i\n", i, j);  */
-          *gr = bestgr;
+	  *gr = bestgr;
 	}
 	if (gr->wtheta > 0.4)  gr->wtheta = 0.4;
 	if (gr->wtheta < -0.2)  gr->wtheta = -0.2;
@@ -708,5 +766,4 @@ void GroundInterface(double timeofday, int dayofyear, double tinc, Vector *sunpo
 	gr->Qg = Qg;
 	gr->R = K + L * (gsig * gr->emissity + gr->sigf * gr->emissityf) - Leg - Lef;
       }
-    }
 }

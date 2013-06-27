@@ -4,14 +4,17 @@
    das Input-File des Meteochem-Programmes.
 */
 
+#ifndef INCLUDE_MCPARSE
 #define MCPARSE
+#define INCLUDE_MCPARSE
 
 #ifndef MCGROUND
 #include "mcground.h"
 #endif
 
-#define NORMAL_NUM (INT_NUM | DOUBLE_NUM | ARRAY_VAL)
-#define SINGLE_VAL (INT_NUM | DOUBLE_NUM)
+#ifndef INCLUDE_MCGROUP
+#include "mc_group.hh"
+#endif
 
 typedef enum  {
    X_DIM = 1, Y_DIM = 2, Z_DIM = 4, TIME_DIM = 8, ALL_DIM = 7, COUNT_DIM = 16
@@ -25,30 +28,50 @@ typedef enum  {TIME, GRID, OPTIONS, ENVIRONMENT, INITIAL_DATA,
    NESTING, OUTPUT, NULL_SECTION
 }  InputSection;
 
+typedef int (*StartprocTemplate)(InputSection, InputSection);
+typedef int (*EndprocTemplate)(void);
+typedef enum {MUST_BE_CALLED, CAN_BE_OMITTED, WAS_CALLED, CALL_WHEN_SUBSTANCES}  CallType;
+
+typedef struct SectionDesc {
+  const char *name;
+  int id;
+  const struct SectionDesc *dependson;
+  BOOL initialize, found;
+  StartprocTemplate startproc;
+  EndprocTemplate endproc;
+  CallType calltype;
+  struct SectionDesc *next;
+}  SectionDesc;
+
 typedef enum  {
   INT_NUM = 1,
   DOUBLE_NUM = 2,
   ON_OFF = 4,
   CORIOLIS_OPTION = 8,
-  PRESSUREALG_OPTION = 16,
-  BORDERTYPE_OPTION = 32,
-  FILTERTYPE_OPTION = 64,
-  TURBTYPE_OPTION = 16384,
-  ADVECTIONTYPE_OPTION = 32768,
+  PRESSUREALG_OPTION = 0x10,
+  BORDERTYPE_OPTION = 0x20,
+  FILTERTYPE_OPTION = 0x40,
+  TURBTYPE_OPTION = 0x80,
+  ADVECTIONTYPE_OPTION = 0x100,
+  SOILTEMP_OPTION = 0x200,
+  RADIATION_OPTION = 0x400,
   ALL_OPTIONS = CORIOLIS_OPTION | PRESSUREALG_OPTION | BORDERTYPE_OPTION |
                 FILTERTYPE_OPTION | ON_OFF  | TURBTYPE_OPTION |
-                ADVECTIONTYPE_OPTION,
-  TIME_VAL = 128,
-  DATE_VAL = 256,
-  ARRAY_VAL = 512,
-  AVG_VAL = 1024,
-  VECTOR_VAL = 2048,
-  INT_VECTOR_VAL = 4096,
-  TEXT_VAL = 8192
+                ADVECTIONTYPE_OPTION | SOILTEMP_OPTION | RADIATION_OPTION,
+  TIME_VAL = 0x800,
+  DATE_VAL = 0x1000,
+  ARRAY_VAL = 0x2000,
+  AVG_VAL = 0x4000,
+  VECTOR_VAL = 0x8000,
+  INT_VECTOR_VAL = 0x10000,
+  TEXT_VAL = 0x20000,
+  VAR_GROUP = 0x40000,
+  NORMAL_NUM = (INT_NUM | DOUBLE_NUM | ARRAY_VAL),
+  SINGLE_VAL = (INT_NUM | DOUBLE_NUM)
 }  InputType;
 
-typedef enum  {GRID_VAL, LAYER_PTR, FILE_PTR, XFILE_PTR, DOUBLE_PTR, LONG_PTR,
-               INT_PTR, CHAR_PTR, GROUND_PARAM, INT_VECT_PTR, PROC_VAL}  StoreType;
+typedef enum  {GRID_VAL, DOUBLE_PTR, LONG_PTR, INT_PTR, CHAR_PTR,
+               GROUND_PARAM, VECT_PTR, INT_VECT_PTR, PROC_VAL, GROUP_VAL}  StoreType;
 
 typedef enum {STARTING_WITH_ZERO = 1, NO_ERRORS_ALLOWED = 2}  VariableOption;
 
@@ -85,6 +108,7 @@ typedef union  {
 typedef struct   {
   InputType type;
   ValueType v;
+  enum { IS_NORMAL, IS_INT_VECT, IS_VECT} vectype;
 }  ValueDesc;
 
 typedef enum  {CALCULATED_VALUES, SET_DEFAULT, MUST_BE_SET, WAS_SET_BY_USER, WAS_PARTITALLY_SET,
@@ -92,28 +116,28 @@ typedef enum  {CALCULATED_VALUES, SET_DEFAULT, MUST_BE_SET, WAS_SET_BY_USER, WAS
 typedef short unsigned DimensionSet;
 
 typedef struct  {
-  char *name;
-  InputSection dependson;
-  BOOL initialize;
-  int (*startproc)(InputSection, InputSection);
-  int (*endproc)();
-  enum {MUST_BE_CALLED, CAN_BE_OMITTED, WAS_CALLED, CALL_WHEN_SUBSTANCES}  calltype;
-}  SectionDesc;
+  int *nval;
+  long *v;
+}  IntVectPtr;
+
+typedef struct {
+  int *nval;
+  double *v;
+}  VectPtr;
+
+typedef double (*PointProc)(int, int, int, struct VarDesc *v);
+/* Eine PointProc berechnet aus den Koordinaten k, i, j einen Wert. 
+   Der vierte Parameter entspricht der id der Aufrufenden Variablen */
 
 typedef enum  {
   IS_RELEVANT, NAME_OF_RELVAR, VAL_OF_RELVAR
 }  RelyCmmd;
 
-typedef struct  {
-  int *nval;
-  long *v;
-}  IntVectPtr;
+typedef char *(*RelyProc)(RelyCmmd cmmd, struct VarDesc *v);
 
-typedef double (*PointProc)(int, int, int);
-/* Eine PointProc berechnet aus den Koordinaten k, i, j einen Wert. */
-
-typedef struct VarDesc  {
-  char *name, *comment, *unit;
+struct VarDesc  {
+  // Variables
+  const char *name, *comment, *unit;
   StoreType storetype;
   union  {
     long *li;
@@ -122,29 +146,59 @@ typedef struct VarDesc  {
     int *i;
     GroundParam *g;
     IntVectPtr *ivp;
+    VectPtr *vp;
     char *txt;
     PointProc proc;
+    Group<VarDesc> *group;
   }  v;
   DimensionSet dims;
   InputSection section, origsection;
   InitType init;
   double defval, rmin, rmax;   /* Range-min and Range-max */
   InputType inputtype;
-  int option, ncoord, id;
-  char *(*relieson)(RelyCmmd cmmd, struct VarDesc *v);
-  struct VarDesc *next;
-}  VarDesc;
+  int option, ncoord, id, userdata;
+  RelyProc relieson;
+  VarDesc *next;
+  VarDesc(void) {}
+  VarDesc(const char *name_in, const char *comment_in, const char *unit_in,
+	  StoreType storetype_in,
+	  void *data,
+	  DimensionSet dims_in,
+	  InputSection section_in,
+	  InitType init_in,
+	  double defval_in, double rmin_in, double rmax_in,
+	  InputType it,
+	  int option_in, RelyProc rely, 
+	  int userdata_in = 0,
+	  int ncoord_in = 0)
+    {
+      name = name_in;
+      comment = comment_in;
+      unit = unit_in;
+      storetype = storetype_in;
+      v.li = (long *)data;
+      dims = dims_in;
+      origsection = section = section_in;
+      init = init_in;
+      defval = defval_in;
+      rmin = rmin_in; rmax = rmax_in;
+      inputtype = it;
+      option = option_in + (init << 8);
+      relieson = rely;
+      userdata = userdata_in;
+      ncoord = ncoord_in;
+    }
+};
 
 extern VarDesc variable[];
-extern SectionDesc section[];
 
 VarDesc *BorderVariable(VarDesc *v, VarDesc *vh);
 
-#define MAXOPTION 24
+#define MAXOPTION 28
 
 extern OptionDesc option[MAXOPTION];
 extern ValueDesc val;
-extern InputSection actualsection;
+extern SectionDesc *actualsection;
 extern int inputerror, inplineno;
 extern Date startdate;
 extern Time starttime;
@@ -154,12 +208,20 @@ int EndOfOptions(void);
 int EndOfGrid(void);
 int EndOfEnvironment(void);
 int EndOfGround(void);
+int EndOfSection(void);
 
 int ChangeSectionTo(char *sname);
 
 int AssignVariable(void);
 
-int SetVariable(char *name);
+int SetVariable(const char *name);
+// Set variable to be set by name
+
+int SetVariable(const char *groupname, const char *name);
+// Set VariableGroup variable to be set
+
+int SetVariable(VarDesc *v);
+// Set variable to be set directly
 
 int CopyRangeToVar(void);
 
@@ -177,6 +239,10 @@ void InitVarTable(void);
 
 int ParseInput(char *fname);
 
+int AddArrayVal(double num);
+
+int AddIntArrayVal(long num);
+
 void InputError(ErrorLevel level, const char *s, ...);
 
 int DefineAVariable(char *name);
@@ -192,3 +258,17 @@ VarDesc *GetNamedVar(char *name);
 #endif
 
 void InitializeData(void);
+
+void mcierror(char *s);
+
+extern "C" int mciwrap();
+
+int mcilex(void);
+
+double AbsolutePointTemp(int k, int i, int j, struct VarDesc *v);
+
+double EquivalentPointTemp(int k, int i, int j, struct VarDesc *v);
+
+double RelativeHumidity(int k, int i, int j, struct VarDesc *v);
+
+#endif

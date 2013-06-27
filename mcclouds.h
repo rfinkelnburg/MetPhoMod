@@ -4,12 +4,12 @@
 */
 
 
-double TotalClouds(int k, int i, int j);
+double TotalClouds(int k, int i, int j, struct VarDesc *v);
 
-double TotalWaterClouds(int k, int i, int j);
+double TotalWaterClouds(int k, int i, int j, struct VarDesc *v);
 
-double TotalIceClouds(int k, int i, int j);
+double TotalIceClouds(int k, int i, int j, struct VarDesc *v);
 
-double TerminalVelocityOfRain(int k, int i, int j);
+double TerminalVelocityOfRain(int k, int i, int j, struct VarDesc *v);
 
 void CloudPhysics(void);

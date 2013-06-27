@@ -34,12 +34,12 @@ VarDesc *AddProductionVariable(char *name)
       InputError(ERROR, "\"%s\" is not a chemical substance.", name+5);
       return (NULL);
     }
-    v = malloc(sizeof(VarDesc));
-    strcpy(v->name = malloc(strlen(name)+1), name);
+    v = (VarDesc *)malloc(sizeof(VarDesc));
+    v->name = strdup(name);
     v->unit = "ppb/sec";
     v->comment = "Production of Substance per second";
-    v->storetype = LAYER_PTR;
-    if (!(v->v.d = calloc(mesh, sizeof(double))))  {
+    v->storetype = DOUBLE_PTR;
+    if (!(v->v.d = (double *)calloc(mesh, sizeof(double))))  {
       InputError(ERROR, "Error allocating memory for Variable \"%s\"",
          name);
       return (NULL);
@@ -49,7 +49,7 @@ VarDesc *AddProductionVariable(char *name)
     v->init = CALCULATED_VALUES;
     v->inputtype = NORMAL_NUM;
     v->next = NULL;
-    p = malloc(sizeof(ProductionDesc));
+    p = (ProductionDesc *)malloc(sizeof(ProductionDesc));
     p->pps = v->v.d;
     p->subs = vp->v.et;
     p->next = prodd;
@@ -177,7 +177,7 @@ OutVar *AppendOutVar(OutVar *first, OutVar *add)
 int PrepareOutput(PrintType prtype, char *name, long firstprint, long dprint)
 {
   OutFile *of;
-  if (actualsection != OUTPUT)  {
+  if (actualsection->id != OUTPUT)  {
     InputError(ERROR, "This command has to be called in the OUTPUT-section.");
     return (1);
   }
@@ -258,6 +258,7 @@ int OpenCDFFile(char *inpfile, OutFile *o)
   nc_put_att_text(o->fid, o->tvarid, "units", strlen(timestr), timestr);
   nc_put_att_text(o->fid, o->tvarid, "field", 20, "Time, scalar, series");
   nc_put_att_text(o->fid, o->tvarid, "positions", 14, "delta, compact");
+#ifdef FERRET_FORMAT
   nc_def_var(o->fid, "X", NC_FLOAT, 1, &o->xid, &xvar);
   nc_put_att_text(o->fid, xvar, "units", 2, "km");
   nc_def_var(o->fid, "Y", NC_FLOAT, 1, &o->yid, &yvar);
@@ -266,6 +267,10 @@ int OpenCDFFile(char *inpfile, OutFile *o)
   nc_put_att_text(o->fid, zvar, "units", 1, "m");
   dims[0] = o->zid; dims[1] = o->yid; dims[2] = o->xid;
   nc_def_var(o->fid, "Topography", NC_FLOAT, 2, dims+1, &topovar);
+#else
+  dims[0] = o->xid; dims[1] = o->yid; dims[2] = o->zid;
+  nc_def_var(o->fid, "Topography", NC_FLOAT, 2, dims, topovar);
+#endif
   nc_def_var(o->fid, "POINTSTATUS", NC_LONG, 3, dims, &boolvar);
   nc_put_att_text(o->fid, topovar, "Unit", 1, "m");
   nc_put_att_text(o->fid, topovar, "units",  1, "m");
@@ -275,11 +280,18 @@ int OpenCDFFile(char *inpfile, OutFile *o)
   nc_put_att_text(o->fid, boolvar, "positions", 14, "delta, compact");
   for (v = o->vptr; v; v = v->next)  {
     i = 0; dims[i++] = o->timeid;
+#ifdef FERRET_FORMAT
     if (v->v->dims & Z_DIM & ~v->has_range)  dims[i++] = o->zid;
     if (v->v->dims & Y_DIM & ~v->has_range)  dims[i++] = o->yid;
     if (v->v->dims & X_DIM & ~v->has_range)  dims[i++] = o->xid;
     CopyWith_(namebuf, v->printname);
     nc_def_var(o->fid, namebuf, NC_FLOAT, i, dims, &v->datid);
+#else
+    if (v->v->dims & X_DIM & ~v->has_range)  dims[i++] = o->xid;
+    if (v->v->dims & Y_DIM & ~v->has_range)  dims[i++] = o->yid;
+    if (v->v->dims & Z_DIM & ~v->has_range)  dims[i++] = o->zid;
+    nc_def_var(o->fid, v->printname, NC_FLOAT, i, dims, &v->datid);
+#endif
     if (v->v->unit)  {
       nc_put_att_text(o->fid, v->datid, "Unit", strlen(v->v->unit),
          v->v->unit);
@@ -294,9 +306,14 @@ int OpenCDFFile(char *inpfile, OutFile *o)
     o->ntimerec = 0;
   }
   nc_enddef(o->fid);
+#ifdef FERRET_FORMAT
   deltatempl[0][1] = level[0]; deltatempl[1][1] = dy; deltatempl[2][1] = dx;
+#else
+  deltatempl[0][1] = dx; deltatempl[1][1] = dy; deltatempl[2][1] = level[0];
+#endif
   nc_put_vara_float(o->fid, deltaid, startval, count, deltatempl[0]);
   startval[1] = 0;
+#ifdef FERRET_FORMAT
   for (startval[1] = nxm+2*printwithborder; startval[1]--; )
     for (startval[0] = nym+2*printwithborder; startval[0]--; )
       nc_put_var1_double(o->fid, topovar, startval, topo+(startval[1]+!printwithborder)*row+startval[0]+!printwithborder);
@@ -320,6 +337,16 @@ int OpenCDFFile(char *inpfile, OutFile *o)
       for (startval[2] = nxm+2*printwithborder; startval[2]--; )
         nc_put_var1_long(o->fid, boolvar, startval,
            &pstat[startval[0]*layer + (startval[2]+!printwithborder)*row + startval[1]+!printwithborder]);
+#else
+  count[0] = 1; count[1] = nym + 2*printwithborder; count[2] = 1;
+  for (*startval = nxm+2*printwithborder; (*startval)--; )
+    nc_put_vara_double(o->fid, topovar, startval, count, topo+(startval[0]+!printwithborder)*row+!printwithborder);
+  for (startval[0] = nxm+2*printwithborder; startval[0]--; )
+    for (startval[1] = nym+2*printwithborder; startval[1]--; )
+      for (startval[2] = nz; startval[2]--; )
+        nc_put_var1_long(o->fid, boolvar, startval,
+           &pstat[startval[2]*layer + (startval[0]+!printwithborder)*row + startval[1]+!printwithborder]);
+#endif
   return (0);
 }
 
@@ -421,7 +448,7 @@ double *GetVal(VarDesc *v, int i, int j, int k, BOOL cache)
        else
 #endif
        return (&g[v->v.et][k*layer+i*row+j]);
-    case LAYER_PTR	:
+    case DOUBLE_PTR	:
 #ifdef PARALLEL
        if (parallel)  {
          resval = GetValFromWorker(v, i, j, k, cache);
@@ -429,26 +456,16 @@ double *GetVal(VarDesc *v, int i, int j, int k, BOOL cache)
        }
        else
 #endif
-         return (&v->v.d[k*layer+i*row+j]);
-    case FILE_PTR	:
-       if (v->dims & X_DIM)  {
-#ifdef PARALLEL
-	 if (parallel)  {
-	   resval = GetValFromWorker(v, i, j, k, cache);
-	   return (&resval);
-	 }
-	 else
-#endif
-           return (&v->v.d[i*row+j]);
-       }
-       else if (v->dims & Z_DIM)	return (&v->v.d[k*row+j]);
-    case XFILE_PTR	: return (&v->v.d[k*xrow+i]);
-    case DOUBLE_PTR	:
-       switch (v->dims)  {
-         case X_DIM	: return (&v->v.d[i]);
-         case Y_DIM	: return (&v->v.d[j]);
-         case Z_DIM	: return (&v->v.d[k]);
-       }
+         switch (v->dims)  {
+            case ALL_DIM   : return (&v->v.d[k*layer+i*row+j]);
+            case X_DIM | Y_DIM : return (&v->v.d[i*row+j]);
+            case Y_DIM | Z_DIM : return (&v->v.d[k*row+j]);
+            case X_DIM | Z_DIM : return (&v->v.d[k*xrow+i]);
+            case X_DIM	: return (&v->v.d[i]);
+            case Y_DIM	: return (&v->v.d[j]);
+            case Z_DIM	: return (&v->v.d[k]);
+          }
+       break;
     case GROUND_PARAM	:
 #ifdef PARALLEL
        if (parallel && cache)  {
@@ -463,11 +480,12 @@ double *GetVal(VarDesc *v, int i, int j, int k, BOOL cache)
        }
        else
 #endif
-         resval = v->v.proc(k, i, j);
+         resval = v->v.proc(k, i, j, v);
        return (&resval);
     default : fprintf(stderr, "FATAL: Internal error in mcprint\n");
     	      exit (1);
   }
+  return (&resval);
 }
 
 #define MAX(a,b) ((a) < (b) ? (b) : (a))
@@ -487,6 +505,7 @@ int WriteOutData(long actime, BOOL ignoretime)
         for (v = o->vptr; v; v = v->next)  {
           ncoord = 1;
           vardim = v->v->dims & ~v->has_range;
+#ifdef FERRET_FORMAT
           for (dim = Z_DIM, i = 0; dim >= X_DIM; dim >>= 1, i++)
             if (vardim & dim)  cptr[i] = coord + ncoord++;
           for (dim = Z_DIM, i = 0; dim >= X_DIM; dim >>= 1, i++)
@@ -504,6 +523,22 @@ int WriteOutData(long actime, BOOL ignoretime)
               }
             }
           }
+#else
+          for (dim = X_DIM, i = 0; dim <= Z_DIM; dim <<= 1, i++)
+            if (vardim & dim)  cptr[i] = coord + ncoord++;
+          for (dim = X_DIM, i = 0; dim <= Z_DIM; dim <<= 1, i++)
+            if (~vardim & dim)  cptr[i] = coord + ncoord++;
+          for (k = v->zmin; k <= v->zmax; k++)  {
+            *cptr[2] = k;
+            for (i = v->xmin; i <= v->xmax; i++)  {
+              *cptr[0] = i-!printwithborder;
+              for (j = v->ymin; j <= v->ymax; j++)  {
+                *cptr[1] = j-!printwithborder;
+                nc_put_var1_double(o->fid, v->datid, coord, GetVal(v->v, i, j, k, TRUE));
+              }
+            }
+          }
+#endif
         }
         nc_sync(o->fid);
       }

@@ -23,21 +23,21 @@ double SumClouds(int hloc, Entity et)
   return (1000. * sum);
 }
 
-double TotalWaterClouds(int k, int i, int j)
+double TotalWaterClouds(int k, int i, int j, struct VarDesc *v)
 {
   int hloc = i*row + j;
   return (SumClouds(hloc, CLOUDWATER) + SumClouds(hloc, RAINWATER));
 }
 
-double TotalIceClouds(int k, int i, int j)
+double TotalIceClouds(int k, int i, int j, struct VarDesc *v)
 {
   int hloc = i*row + j;
   return (SumClouds(hloc, CLOUDICE));
 }
 
-double TotalClouds(int k, int i, int j)
+double TotalClouds(int k, int i, int j, struct VarDesc *v)
 {
-  return (TotalWaterClouds(k, i, j) + TotalIceClouds(k, i, j));
+  return (TotalWaterClouds(k, i, j, v) + TotalIceClouds(k, i, j, v));
 }
 
 void Condensate(int loc, int k, double qsw, double qsi, double *T)
@@ -91,7 +91,7 @@ void AutoConvert(int loc, int k)
   }
 }
 
-double TerminalVelocityOfRain(int k, int i, int j)
+double TerminalVelocityOfRain(int k, int i, int j, struct VarDesc *v)
 {
   int loc;
   double lambda;

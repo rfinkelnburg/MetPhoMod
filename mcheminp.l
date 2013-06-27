@@ -47,6 +47,11 @@ photodiss3 {
 	     return (PHOTOKIN3);
 	   }
 
+twostream  {
+             strcpy(lasttoken, yytext);
+             return (TWOSTREAMARG);
+           }
+
 special    {
 	     strcpy(lasttoken, yytext);
 	     return (SPECIALKIN);

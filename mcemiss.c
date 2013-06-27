@@ -76,7 +76,7 @@ VarDesc *EmissionVariable(VarDesc *v, int pointvalues, int id, Coordinate *coord
   /*  vh->name = strdup(v->name); */
   vh->unit = "mol/m^2*sec";
   vh->id = (id ? id : newid++);
-  if (actualsection == EMISSIONS)  {
+  if (actualsection->id == EMISSIONS)  {
     vh->comment = "dynamically created emission variable";
     if (pointvalues)  {
       vh->storetype = DOUBLE_PTR;
@@ -84,18 +84,18 @@ VarDesc *EmissionVariable(VarDesc *v, int pointvalues, int id, Coordinate *coord
       vh->rmax = 5.;
     }
     else  {
-      vh->storetype = FILE_PTR;
+      vh->storetype = DOUBLE_PTR;
       vh->dims = X_DIM | Y_DIM;
       vh->rmax = 1.e-5;
     }
     vh->ncoord = pointvalues;
     vh->v.d = PlaceEmissionVariable(v, vh, pointvalues, coord);
-    vh->init = vh->option >> 8;
+    vh->init = InitType(vh->option >> 8);
     vh->defval = 0.;
     vh->rmin = 0.;
     vh->inputtype = NORMAL_NUM;
   }
-  if (actualsection == REDUCTION)  {
+  if (actualsection->id == REDUCTION)  {
     vh->storetype = DOUBLE_PTR;
     vh->section = REDUCTION;
     vh->dims = 0;
@@ -156,8 +156,21 @@ void Emit(double tinc)
   Coordinate *c;
   int h, i, j, k, loc, vloc;
   double T;
+  int xs, xe;
+#ifdef PARALLEL
+  if (parallel && master) return; // Nothing to do in this case
+  if (parallel && !master)  {
+    xs = mfirstx + !mfirstx;
+    xe = mlastx - rightest;
+  }
+  else  {
+#endif
+    xs = 1; xe = nx;
+#ifdef PARALLEL
+  }
+#endif
   if (!firstemiss)  return;
-  for (i = nx; --i; )
+  for (i = xs; i < xe; i++)
     for (j = ny; --j; )  {
       loc = i*row+j;
       k = ground[loc].firstabove;

@@ -15,6 +15,7 @@
 #include "mcdep.h"
 #ifdef PARALLEL
 #include <pvm3.h>
+#include "mcparallel.h"
 #endif
 
 typedef struct DepositionDesc {
@@ -35,16 +36,16 @@ double *PlaceDepositionVariable(VarDesc *v)
   for (d = deposit; d && strcmp(d->v.name+2, v->name); d = d->next);
   if (!d)  {
     if (!(d = (DepositionDesc *)malloc(sizeof(DepositionDesc))) ||
-        !(d->deposition = (double *)malloc(layer*sizeof(double))))  {
+        !(d->deposition = (double *)calloc(layer, sizeof(double))))  {
       fprintf(stderr, "ERROR: Error allocating memory in PlaceDepositionVariable. Exiting!\n");
       exit (1);
     }
     nv = &d->v;
-    nv->name = malloc(2 * strlen(v->name) + 16);
-    sprintf(nv->name, "D-%s\0Deposition of %s", v->name, v->name);
+    nv->name = (char *)malloc(2 * strlen(v->name) + 16);
+    sprintf((char *)nv->name, "D-%s\0Deposition of %s", (char *)v->name, (char *)v->name);
     nv->comment = nv->name + strlen(v->name) + 1;
     nv->unit = depunit;
-    nv->storetype = FILE_PTR;
+    nv->storetype = DOUBLE_PTR;
     nv->v.d = d->deposition;
     nv->dims = (X_DIM | Y_DIM);
     nv->init = CALCULATED_VALUES;
@@ -62,7 +63,7 @@ double *PlaceDepositionVariable(VarDesc *v)
 VarDesc *DepositionVariable(VarDesc *v, VarDesc *vh)
 {
   *vh = *v;
-  if (actualsection == DEPOSITION && v->storetype == GRID_VAL)  {
+  if (actualsection->id == DEPOSITION && v->storetype == GRID_VAL)  {
     vh->storetype = DOUBLE_PTR;
     vh->dims = 3;
     vh->v.d = PlaceDepositionVariable(v);
@@ -77,8 +78,10 @@ VarDesc *DepositionVariable(VarDesc *v, VarDesc *vh)
 void SendDepositionData(void)
 {
   DepositionDesc *d;
+  if (deposit)
+    printf("  deposition data\n");
   for (d = deposit; d; d = d->next)  {
-    pvm_pkstr(d->v.name+2);
+    pvm_pkstr((char *)d->v.name+2);
     pvm_pkdouble(&d->diffusivity, 3, 1);
   }
   pvm_pkstr("");
@@ -111,7 +114,20 @@ void Deposit(long tinc)
   DepositionDesc *dd;
   GroundParam *gr;
   if (deposit)  {
-    for (i = nx; --i; )
+    int xs, xe;
+#ifdef PARALLEL
+    if (parallel && master) return; // Nothing to do in this case
+    if (parallel && !master)  {
+      xs = mfirstx + !mfirstx;
+      xe = mlastx - rightest;
+    }
+    else  {
+#endif
+      xs = 1; xe = nx;
+#ifdef PARALLEL
+    }
+#endif
+    for (i = xs; i < xe; i++)
       for (j = ny; --j; )  {
 	gr = &ground[i*row+j];
 	fa = gr->firstabove;
@@ -128,7 +144,7 @@ void Deposit(long tinc)
 	      rc = gr->Drmin + (gr->Drmax - gr->Drmin) *
 		   (1. - pow(gr->Rg * 0.0025, 0.3333333333333333));
 	    else
-	      rc = gr->Drmax;
+	      rc = gr->Drmin;
 	    rc *= dd->depofact;
 	  }
 	  else  {    /* Wasseroberflaeche */
@@ -136,7 +152,7 @@ void Deposit(long tinc)
 	  }
 	  rtot = gr->ra + rs + rc;
 	  dep = g[dd->et][loc] / rtot;
-	  dd->deposition[i*row+j] = dep /* pp[fa] / (Ru * T) */;
+	  dd->deposition[i*row+j] = dep * pp[fa] / (Ru * T);
 	  g[dd->et][loc] -= dep * leveli[fa] * tinc;
 	}
       }

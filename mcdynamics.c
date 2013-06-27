@@ -119,31 +119,31 @@ void ApplyCoriolis(int tinc)
       for (k = ground[i*row+j].firstabove; k < nz; k++)  {
         loc = i*row + j + k*layer;
 	switch (coriolistype)  {
-	  case FULLCORIOLIS : 
-	     d[UWIND] =  Coriol3 * g[VWIND][loc] - costma * Coriol2 * g[WWIND][loc];
-             d[VWIND] = -Coriol3 * g[UWIND][loc] + sintma * Coriol2 * g[WWIND][loc];
-/*             d[WWIND] = (pressuretype == NONHYDROSTATIC ? Coriol3 * g[UWIND][loc] : 0.); */
-             break;
-          case DIFFERENTIALCORIOLIS :
-	     d[UWIND] =  Coriol3 *
-	       (g[VWIND][loc] -
-		0.5 * (2 - pstat[loc-1] - pstat[loc+1]) * avg[VWIND*nz+k]) -
-	       costma * Coriol2 * g[WWIND][loc];
-             d[VWIND] = -Coriol3 *
-	       (g[UWIND][loc] -
-		0.5 * (2 - pstat[loc-row] - pstat[loc+row]) * avg[UWIND*nz+k]) +
-	       sintma * Coriol2 * g[WWIND][loc];
-/*             d[WWIND] = (pressuretype == NONHYDROSTATIC ? Coriol3 * g[UWIND][loc] : 0.); */
-             break;
-          case GEOSTROPHICCORIOLIS :
-	     d[UWIND] =  Coriol3 *
-	       (g[VWIND][loc] - 0.5 * (2 - pstat[loc-1] - pstat[loc+1]) * vgeos[k]) -
-	       costma * Coriol2 * g[WWIND][loc];
-             d[VWIND] = -Coriol3 *
-	       (g[UWIND][loc] - 0.5 * (2 - pstat[loc-row] - pstat[loc+row]) * ugeos[k]) +
-	       sintma * Coriol2 * g[WWIND][loc];
-/*             d[WWIND] = (pressuretype == NONHYDROSTATIC ? Coriol3 * g[UWIND][loc] : 0.); */
-             break;
+	case FULLCORIOLIS : 
+	  d[UWIND] =  Coriol3 * g[VWIND][loc] - costma * Coriol2 * g[WWIND][loc];
+	  d[VWIND] = -Coriol3 * g[UWIND][loc] + sintma * Coriol2 * g[WWIND][loc];
+	  /*             d[WWIND] = (pressuretype == NONHYDROSTATIC ? Coriol3 * g[UWIND][loc] : 0.); */
+	  break;
+	case DIFFERENTIALCORIOLIS :
+	  d[UWIND] =  Coriol3 *
+	    (g[VWIND][loc] -
+	     0.5 * (2 - pstat[loc-1] - pstat[loc+1]) * avg[VWIND*nz+k]) -
+	    costma * Coriol2 * g[WWIND][loc];
+	  d[VWIND] = -Coriol3 *
+	    (g[UWIND][loc] -
+	     0.5 * (2 - pstat[loc-row] - pstat[loc+row]) * avg[UWIND*nz+k]) +
+	    sintma * Coriol2 * g[WWIND][loc];
+	  /*             d[WWIND] = (pressuretype == NONHYDROSTATIC ? Coriol3 * g[UWIND][loc] : 0.); */
+	  break;
+	case GEOSTROPHICCORIOLIS :
+	  d[UWIND] =  Coriol3 *
+	    (g[VWIND][loc] - 0.5 * (2 - pstat[loc-1] - pstat[loc+1]) * vgeos[k]) -
+	    costma * Coriol2 * g[WWIND][loc];
+	  d[VWIND] = -Coriol3 *
+	    (g[UWIND][loc] - 0.5 * (2 - pstat[loc-row] - pstat[loc+row]) * ugeos[k]) +
+	    sintma * Coriol2 * g[WWIND][loc];
+	  /*             d[WWIND] = (pressuretype == NONHYDROSTATIC ? Coriol3 * g[UWIND][loc] : 0.); */
+	  break;
         }
         for (et = WWIND; et--; )  g[et][loc] += tinc * d[et];
       }
@@ -251,19 +251,19 @@ void CheckTimeStep(long *tinc, long *chemtinc, double cfact)
 	for (k = ground[i*row+j].firstabove, loc = k*layer+i*row+j; k < nz; k++, loc += layer)  {
 /* Es scheint, dies waere nur fuer Operator-Splitting korrekt! */
 	  if (advectiontype == PPM_A)  {
-            if ((tinctemp = cfact * dx / (PP(flux[UWIND][loc]) - PM(flux[UWIND][loc-row]) + eps)) < maxt)  maxt = tinctemp;
-            if ((tinctemp = cfact * dy / (PP(flux[VWIND][loc]) - PM(flux[VWIND][loc-1]) + eps)) < maxt)  maxt = tinctemp;
+            if ((tinctemp = int(cfact * dx / (PP(flux[UWIND][loc]) - PM(flux[UWIND][loc-row]) + eps))) < maxt)  maxt = tinctemp;
+            if ((tinctemp = int(cfact * dy / (PP(flux[VWIND][loc]) - PM(flux[VWIND][loc-1]) + eps))) < maxt)  maxt = tinctemp;
             if (k < nzm)  {
-              if ((tinctemp = cfact * level[k] / (PP(flux[WWIND][loc]) - (k ? PM(flux[WWIND][loc-layer]): 0) + eps)) < maxt)  maxt = tinctemp;
+              if ((tinctemp = int(cfact * level[k] / (PP(flux[WWIND][loc]) - (k ? PM(flux[WWIND][loc-layer]): 0) + eps))) < maxt)  maxt = tinctemp;
             }
           }
           else  {
 /* ansonsten gilt: */
-            if ((tinctemp = cfact /
+            if ((tinctemp = int(cfact /
         	 ( (PP(flux[UWIND][loc]) - PM(flux[UWIND][loc-row])) / dx + 
         	   (PP(flux[VWIND][loc]) - PM(flux[VWIND][loc-1])) / dy + 
         	   (PP(flux[WWIND][loc]) - (k ? PM(flux[WWIND][loc-layer]): 0)) / level[k] + 
-        	  eps)) < maxt)
+        	  eps))) < maxt)
               maxt = tinctemp;
             }
 	}

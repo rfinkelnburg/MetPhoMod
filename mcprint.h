@@ -35,6 +35,8 @@ OutVar *AppendOutVar(OutVar *first, OutVar *add);
 
 int PrepareOutput(PrintType prtype, char *name, long firstprint, long dprint);
 
+void AttachOutlist(OutVar *v);
+
 #endif
 
 int OpenOutputFiles(char *inprow, BOOL reopen);

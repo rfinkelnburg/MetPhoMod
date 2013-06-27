@@ -1,6 +1,8 @@
 /* DEFINITION MODULE MCGlobal
    Globale Datendefinitionen des MeteoChem Programmes */
 
+#ifndef INCLUDE_MCGLOBAL
+#define INCLUDE_MCGLOBAL
 
 #define UWIND 0
 #define VWIND 1
@@ -57,7 +59,7 @@ typedef enum  {NO_TURB, TTTT, KEPS_T}  TurbType;
 typedef enum  {MPDATA_A, PPM_A}  AdvectionType;
 
 extern double dx, dy, dxi, dyi, dx2, dy2, dx2i, dy2i, ixx, iyy;
-extern double **g;       /* Zeiger auf aktuelles Grid (g) */
+extern double **g;     /* Zeiger auf aktuelles Grid (g) */
 extern BOOL *gactive;
 extern double *Km, *flux[3], *oldu[3], *irdiv;
 extern double *press;  /* Druck und Quellenterme */
@@ -84,7 +86,8 @@ extern double Xlong, Xlat, Coriol3, Coriol2, timezonediff, topprecipwater,
 	    stratozone, turbidity, spatialfilter, borderdamping;
 extern BOOL groundinterface, printresid, plausible, withchem,
 	    advection, windadvection, printwithborder, cloudwater, cloudice,
-	    timeddump, dampinglayer, workeronthishost, shortwaveradiation;
+	    timeddump, dampinglayer, workeronthishost, shortwaveradiation,
+            calcsoiltemp, radiationtype;
 extern int smiord, smnonos;
 extern double *westborder, *eastborder;
 extern double *northborder, *southborder;
@@ -123,3 +126,6 @@ void MakeAFullDump();
 BOOL ReadFullDump();
 
 #endif
+
+#endif
+

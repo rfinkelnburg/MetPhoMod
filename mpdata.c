@@ -135,9 +135,9 @@ double Min3(double a, double b, double c)
 
 #define VDIV2(a,b1,b2,b3,b4)  (0.25*a*(b1+b2-b3-b4))
 
-void SwapPtr(void **a, void **b)
+void SwapPtr(double **a, double **b)
 {
-  void *tmp;
+  double *tmp;
   tmp = *a; *a = *b; *b = tmp;
 }
 
@@ -246,8 +246,8 @@ void MpAdvect(int tinc,
     }
   SetBound2(nx, ny, x, vx, vy);
   while (iord--)  {
-    SwapPtr((void *)&fx, (void *)&vx);
-    SwapPtr((void *)&fy, (void *)&vy);
+    SwapPtr(&fx, &vx);
+    SwapPtr(&fy, &vy);
     for (j = ny; --j; )
       for (i = nx+1; --i; )  {
         loc = i*row+j;

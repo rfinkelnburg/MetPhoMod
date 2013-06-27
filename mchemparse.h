@@ -3,6 +3,8 @@
    Strukturdefinitionen fuer die Chemieberechnungen.
 */
 
+#ifndef INCLUDE_MCHEMPARSE
+#define INCLUDE_MCHEMPARSE
 
 #define MAXSUBST 120
 #define MAXEDUCT 600
@@ -12,7 +14,8 @@
 
 typedef char Token[TOKENLEN];
 
-typedef enum {THERMAL, THERMAL2, TROE, TROEQUIL, SPECIAL, PHOTODISS, PHOTODISS3}  KinType;
+typedef enum {THERMAL, THERMAL2, TROE, TROEQUIL, SPECIAL, PHOTODISS,
+	      PHOTODISS3, TWOSTREAM}  KinType;
 
 typedef struct  {
   int subs;
@@ -38,7 +41,7 @@ typedef struct Reaction  {
   Product *product;
   double K, EoR, N, M, k0, kinf, rate, Ke;
   char *formula;
-  int neduct, nproduct, netot, specidx, specialine;
+  int neduct, nproduct, netot, specidx, specialine, pos;
 #ifdef FULLM
   int nm, nox, nn2;
 #endif
@@ -96,6 +99,8 @@ double SpecialConst(int idx, double T, double M);
 /* Eine Prozedur in dieser Form wird durch "GenerateSpecial" erzeugt */
 
 void chierror(char *s);
-int chiwrap();
+extern "C" int chiwrap();
 
 void AssignReactToSubst();
+
+#endif

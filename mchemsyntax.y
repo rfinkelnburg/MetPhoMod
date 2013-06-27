@@ -1,9 +1,14 @@
 %{
 
+#include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "mcglobal.h"
 #include "mchemparse.h"
+#include "mctwostream/mctwostream.h"
+
+int chilex(void);
 
 %}
 
@@ -17,7 +22,7 @@
 }
 
 %token <ival> INTNUM DELIMITER NONSENSE PHOTOKIN THERMKIN TERM2KIN TROEKIN
-	      PHOTOKIN3 TROEQUILKIN SPECIALKIN UNIT A_UNIT
+	      PHOTOKIN3 TWOSTREAMARG TROEQUILKIN SPECIALKIN UNIT A_UNIT
 %token <ival> REACTIONS SUBSTANCES END REF
 %token <dval> FLOATNUM
 %token <item> SUBSTNAME STRING
@@ -129,6 +134,16 @@ kindata : PHOTOKIN '(' floatnum ',' floatnum ')'
             reaction[nreact].N = $5;
             reaction[nreact].EoR = $7;
             reaction[nreact].type = PHOTODISS3;
+          }
+        | TWOSTREAMARG '(' INTNUM ')'
+          {
+	    reaction[nreact].type = TWOSTREAM;
+	    reaction[nreact].pos = twostreammodule.RegisterReaction($3);
+	    if (!reaction[nreact].pos) {
+	      fprintf(stderr, "CHEM-ERROR: PhotoDissReaction #%d was not found.\n",
+		      $3);
+	      chemerror = 1;
+	    }
           }
         | THERMKIN '(' floatnum ',' floatnum ')'
           {

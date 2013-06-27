@@ -91,7 +91,7 @@ int EndOfClassLine(void)
 void FillGroundValues(void)
 {
   int i, j, k, l, loc, gc;
-  int initstate = WAS_SET_BY_USER;
+  InitType initstate = WAS_SET_BY_USER;
   if (!nclass)  return;
   for (i = nx; --i; )
     for (j = ny; --j; )  {

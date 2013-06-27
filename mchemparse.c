@@ -245,7 +245,7 @@ int CreateChemTable(void)
   return (0);
 }
 
-int chiwrap()
+extern "C" int chiwrap()
 {
   return (1);
 }

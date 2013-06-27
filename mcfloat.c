@@ -6,13 +6,18 @@
 
 #include <signal.h>
 #include <stdio.h>
-#ifdef SunOS
+#include <stdlib.h>
+#include <pwd.h>
+#ifdef SVR4
  #include <floatingpoint.h>
 #endif
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#ifdef AIX
+  #include <fptrap.h>
+#endif
 #include "mcglobal.h"
 #include "mcfloat.h"
 #include "mcprint.h"
@@ -47,25 +52,15 @@ void InstallFpeHandler()
   struct sigaction oldaction, action;
   action.sa_handler = matherr;
   memset(&action.sa_mask, 0, sizeof(action.sa_mask));
-  /*
-#if defined(IRIX) || defined(SunOS)
-  action.sa_mask.__sigbits[0] = action.sa_mask.__sigbits[1] =
-  action.sa_mask.__sigbits[2] = action.sa_mask.__sigbits[3] = 0;
-#elif defined(AIX)
-  action.sa_mask.hisigs = action.sa_mask.losigs = 0;
-#else
-  action.sa_mask = 0;
-#endif
-  */
   action.sa_flags = 0;
-  sigaction(SIGFPE, &action, &oldaction);
+  //  sigaction(SIGFPE, &action, &oldaction); not really useful
 }
 
 #endif
 
 BOOL mailtime = FALSE, dumpnow = FALSE;
 
-void SignalUSR1Handler()
+void SignalUSR1Handler(int)
 {
   int i;
   printf("Signal USR1 received - Updating output-files!\n");
@@ -73,14 +68,14 @@ void SignalUSR1Handler()
   mailtime = 1;
 }
 
-void SignalUSR2Handler()
+void SignalUSR2Handler(int)
 {
   int i;
   printf("Signal USR2 received - Creating a dumpfile!\n");
   dumpnow = 1;
 }
 
-void SignalTERMHandler()
+void SignalTERMHandler(int)
 {
   printf("TERM Signal received.\n");
 #ifdef PARALLEL
@@ -99,7 +94,7 @@ void SignalTERMHandler()
   exit (1);
 }
 
-void SignalFPEHandler()
+void SignalFPEHandler(int)
 {
   abort();
   while (1);
@@ -110,8 +105,8 @@ void InstallSignalHandler()
 {
   struct sigaction oldaction, action;
   action.sa_handler = SignalUSR1Handler;
-  memset(&action.sa_mask, 0, sizeof(action.sa_mask));
   action.sa_flags = 0;
+  memset(&action.sa_mask, 0, sizeof(action.sa_mask));
   sigaction(SIGUSR1, &action, &oldaction);
   action.sa_handler = SignalUSR2Handler;
   sigaction(SIGUSR2, &action, &oldaction);
@@ -126,7 +121,7 @@ void InstallSignalHandler()
 void MailTheTime()
 {
   int p[2];
-  char cmmt[256];
+  char cmmt[256], *uid;
   static char uname[30];
   pipe(p);
   if (fork())  {
@@ -139,8 +134,9 @@ void MailTheTime()
   else  {
     close(0); dup(p[0]);
     close(p[0]); close(p[1]);
-    printf("Sending mail to %s\n", cuserid(uname));
-    execlp("mail", "mail", cuserid(uname), (char *)0);
+    uid = getpwuid(geteuid())->pw_name;
+    printf("Sending mail to %s\n", uid);
+    execlp("mail", "mail", uid, (char *)0);
     printf("Start of mail did not succeed!\n");
     exit (0);
   }

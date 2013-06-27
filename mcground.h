@@ -3,6 +3,17 @@
    In diesem Modul werden Bodenbilanzen gerechnet. 
 */
 
+#ifndef INCLUDE_MCGROUND
+#define INCLUDE_MCGROUND
+
+#ifndef INCLUDE_MCGLOBAL
+#include "mcglobal.h"
+#endif
+
+#ifndef INCLUDE_SUNPOS
+#include "sunpos.h"
+#endif
+
 #define MCGROUND
 #define NGROUNDLAYER 6
 
@@ -12,6 +23,7 @@ typedef struct  {
 	 Cg, ks,	/* Waermekapazitaet, thermal diffusivity */
 	 X, r,		/* Relative Feuchte des Bodens und Feuchte-Widerstand */
 	 albedo,
+         absorb,        /* Anteil der einfallenden Strahlung, die absorbiert wird (Boden und Pflanzen kombiniert) */
 	 wtheta, wq,	/* Sensibler und latenter Waermefluss in die Atmosphaere */
 	 zL,            /* Stabilitaetsparameter */
 	 uw, vw,
@@ -59,13 +71,8 @@ double AbsoluteTemp(double theta, double press, double humid);
 /* Berechnet die Absolute Temperatur ausgehend von der virtuel-potentiellen-
    der Feuchte und des Druckes. */
 
-double AbsolutePointTemp(int k, int i, int j);
-
-double EquivalentPointTemp(int k, int i, int j);
-
-double RelativeHumidity(int k, int i, int j);
-
 void CalcSlope(Vector *v, int i, int j);
 
 void GroundInterface(double timeofday, int dayofyear, double tinc, Vector *sunpos);
 
+#endif

@@ -13,6 +13,9 @@
 #include "sunpos.h"
 #include "mcground.h"
 #include "mcttt.h"
+#ifdef PARALLEL
+#include "mcparallel.h"
+#endif
 
 typedef double Row[101];
 
@@ -86,9 +89,7 @@ void CalcTransilientMatrix(int ig, int jg, double tinc, Row *ttm, double *deltaz
 /*  if (ig == 74 && jg == 37)
     PrintTMatrix(nte, ttm, "Monoton steigend");  */
 /* Berechne relative Massen */
-/*  deltaz[0] = level[fa+1] - topo[ig*row+jg] + reflevel + gr->z;
-  deltaz[1] = level[fa+2] - topo[ig*row+jg] + reflevel - gr->z;  */
-  deltaz[0] = 2. * gr->z;
+  deltaz[0] = 2. * gr->z / gr->slope.z;
   for (i = 1; i < nte; i++)
     deltaz[i] = 2. * level[i-1];
   deltaz[1] -= deltaz[0];
@@ -147,9 +148,21 @@ void CalcTransilientTurbulence(double tinc)
   Entity et;
   double K, h, d;
   Row deltaz;
+  int xs, xe;
+#ifdef PARALLEL
+  if (parallel && master) return; // Nothing to do in this case
+  if (parallel && !master)  {
+    xs = mfirstx + !mfirstx;
+    xe = mlastx - rightest;
+  }
+  else  {
+#endif
+    xs = 1; xe = nx;
+#ifdef PARALLEL
+  }
+#endif
   ttm = (Row *)calloc(nz+1, sizeof(Row));
-/* Vertikale Turbulenz */
-  for (i = nx; --i; )
+  for (i = xs; i < xe; i++)
     for (j = ny; --j; )  {
       fa = ground[i*row+j].firstabove;
       CalcTransilientMatrix(i, j, tinc, ttm, deltaz);
@@ -158,55 +171,6 @@ void CalcTransilientTurbulence(double tinc)
       for (k = fa; k < nz; k++)
         Km[k*layer+i*row+j] = 0.2875 * sqr(deltaz[k-fa+1]) * (1. - ttm[k-fa+1][k-fa+1]) / tinc;
     }
-/* Horizontale Turbulenz */
-/*
-  for (et = UWIND; et <= VWIND; et++)  {
-    for (k = nz; k--; )  {
-      for (i = nx; --i; )
-	for (j = ny; --j; )  {
-	  loc = k*layer+i*row+j;
-	  if (!pstat[loc])  {
-	    d = 0;
-	    d += Km[loc] *
-		 (g[et][loc+row] + g[et][loc-row] -
-		  2.* g[et][loc]) * ixx;
-	    d += Km[k][i][j] *
-		 (g[et][loc+1] + g[et][loc-1] -
-		  2.* g[et][loc]) * iyy;
-	    tmplayer[i*row+j] = d * tinc;
-	  }
-	  else tmplayer[i*row+j] = 0.;
-        }
-      for (i = nx; --i; )
-	for (j = ny; --j; )
-	  g[et][k*layer+i*row+j] += tmplayer[i*row+j];
-    }
-  }
-  for (et = TEMP; et < maxentity; et++)
-    if (g[et])  {
-      for (k = nz; k--; )  {
-        for (i = nx; --i; )
-	for (j = ny; --j; )  {
-	  loc = k*layer+i*row+j;
-	  if (!pstat[loc])  {
-	    h = 0.;
-	    if (!pstat[loc+row])
-	      h += (g[et][loc+row] - g[et][loc]) * ixx;
-	    if (!pstat[loc-row])
-	      h += (g[et][loc-row] - g[et][loc]) * ixx;
-	    if (!pstat[loc+1])
-	      h += (g[et][loc+1] - g[et][loc]) * iyy;
-	    if (!pstat[loc-1])
-	      h += (g[et][loc-1] - g[et][loc]) * iyy;
-	    tmplayer[i*row+j] = Km[loc] * h * tinc;
-	  }
-	}
-        for (i = nx; --i; )
-	for (j = ny; --j; )
-	  g[et][k*layer+i*row+j] += tmplayer[i*row+j];
-      }
-  }
-*/
   free(ttm);
 }
 
@@ -217,7 +181,20 @@ void CalcGroundTurbulence(double tinc)
   double de, winddecay;
   Entity et;
   double h2;
-  for (i = nx; --i; )
+  int xs, xe;
+#ifdef PARALLEL
+  if (parallel && master) return; // Nothing to do in this case
+  if (parallel && !master)  {
+    xs = mfirstx + !mfirstx;
+    xe = mlastx - rightest;
+  }
+  else  {
+#endif
+    xs = 1; xe = nx;
+#ifdef PARALLEL
+  }
+#endif
+  for (i = xs; i < xe; i++)
     for (j = ny; --j; )  {
       gr = &ground[i*row+j];
       k = gr->firstabove;
@@ -234,9 +211,11 @@ void CalcGroundTurbulence(double tinc)
       gr->a[UWIND] *= gr->uw;
       gr->a[VWIND] *= gr->vw;
       gr->a[TEMP] += tinc * gr->wtheta * h2;
-      gr->a[HUMIDITY] += tinc * gr->wq * h2;
-      gr->X += tinc * (1. - gr->X - gr->r * gr->wq * Lc * density[k]) / 1000.;
-      if (gr->X > 1.)  gr->X = 1.;
-      if (gr->X < 0.)  gr->X = 0.;
+      if (calcsoiltemp)  {
+	gr->a[HUMIDITY] += tinc * gr->wq * h2;
+	gr->X += tinc * (1. - gr->X - gr->r * gr->wq * Lc * density[k]) / 1000.;
+	if (gr->X > 1.)  gr->X = 1.;
+	if (gr->X < 0.)  gr->X = 0.;
+      }
     }
 }

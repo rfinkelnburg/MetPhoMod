@@ -12,6 +12,8 @@
 #include "mcprint.h"
 #include "mchemparse.h"
 #include "mcnest.h"
+#include "mc_commands.hh"
+#include "mc_group.t"
 
 #define SCALLD(proc)  if (proc)  {inputerror = 1; YYERROR;}
 #define SCALL(proc)  if (proc)  inputerror = 1
@@ -27,6 +29,8 @@
   Date date;
   Time time;
   OutVar *outvar;
+  Command *command;
+  Group<Ident> *idlist;
 }
 
 %token <item>  SECTION IDENTIFIER STRING
@@ -35,10 +39,11 @@
 %token <ival>  ASCII CDF VARDEFINE AS GROUNDCLASSES SUBDOMAIN
 %token <date>  IDATE
 %token <time>  DAYTIME
+%token <command> USERCOMMAND
 
-%type <dval> floatnum floatlist
 %type <outvar> outitem outlist
 %type <item> printident
+%type <idlist> idlist;
 
 %%
 
@@ -85,7 +90,7 @@ statement :
           }
           | CDFIMPORT STRING
           {
-            SCALL(ReadCDFFile($2, actualsection));
+            SCALL(ReadCDFFile($2, InputSection(actualsection->id)));
           }
           | CHEMFILE STRING
           {
@@ -94,14 +99,42 @@ statement :
           }
           | SUBDOMAIN STRING
           {
-            SCALL(DefineNestDomain($2, actualsection));
+            SCALL(DefineNestDomain($2, InputSection(actualsection->id)));
           }
           | outstatement ;
           | IDENTIFIER VARDEFINE value
           {
             SCALL(DefineAVariable($1));
           }
+          | USERCOMMAND
+          {
+	    SCALL($1->Exec());
+          }
+          | USERCOMMAND IDENTIFIER
+          {
+            SCALL($1->Exec(Ident($2)));
+          }
+          | USERCOMMAND idlist
+          {
+            SCALL($1->Exec(*$2));
+          }
           
+idlist : IDENTIFIER ',' IDENTIFIER
+       {
+         {
+           Group<Ident> *idgr = new Group<Ident>;
+           Ident *id1 = new Ident($1), *id2 = new Ident($3);
+           idgr->Register(id1);
+           idgr->Register(id2);
+           $$ = idgr;
+         }
+       }
+       | idlist ',' IDENTIFIER
+       {
+         $1->Register(new Ident($3));
+         $$ = $1;
+       }
+
 groundclasstable : groundclkey titleline datalines;
 
 groundclkey : GROUNDCLASSES
@@ -109,13 +142,13 @@ groundclkey : GROUNDCLASSES
 	  SCALL(InitializeGroundClasses());
 	}
 
-titleline : idlist ';';
+titleline : tidlist ';';
 
-idlist : IDENTIFIER
+tidlist : IDENTIFIER
 	{
 	  SCALLD(AddClassVar($1));
 	}
-       | idlist IDENTIFIER
+       | tidlist IDENTIFIER
 	{
 	  SCALLD(AddClassVar($2));
 	}
@@ -151,6 +184,10 @@ variable : IDENTIFIER
            SCALLD(SetVariable($1));
            SCALLD(CopyRangeToVar());
          }
+         | IDENTIFIER '.' IDENTIFIER
+         {
+	   SCALLD(SetVariable($1, $3));
+	 }
 
 value : INTNUM
       {
@@ -187,14 +224,7 @@ value : INTNUM
       {
         SCALLD(CopyVarToVal($1));
       }
-      | numbers
-      {
-        val.type = VECTOR_VAL;
-      }
-      | intnumbers
-      {
-        val.type = INT_VECTOR_VAL;
-      }
+      | numbers ;
       | STRING
       {
         val.type = TEXT_VAL;
@@ -234,46 +264,39 @@ dimspecs : dimspec |
 
 dimspec : DIMENSION
 	{
-	  SCALL(SetDimension($1));
+	  SCALL(SetDimension(Dimension($1)));
 	}
 	| rangespec
 	| DIMENSION '=' GROUNDLEVEL
 	{
-	  SCALL(SetDimension($1));
-	  SCALL(SetRange($1, -1, -1));
+	  SCALL(SetDimension(Dimension($1)));
+	  SCALL(SetRange(Dimension($1), -1, -1));
 	}
 
 rangespec : DIMENSION '=' INTNUM RANGE INTNUM
 	  {
-	    SCALL(SetDimension($1));
-	    SCALL(SetRange($1, $3, $5));
+	    SCALL(SetDimension(Dimension($1)));
+	    SCALL(SetRange(Dimension($1), $3, $5));
 	  }
 	  | DIMENSION '=' INTNUM
 	  {
-	    SCALL(SetDimension($1));
-	    SCALL(SetRange($1, $3, $3));
+	    SCALL(SetDimension(Dimension($1)));
+	    SCALL(SetRange(Dimension($1), $3, $3));
 	  }
 
-numbers : '(' floatlist ')'
+numbers : '(' numberlist ')'
 
-floatlist : floatnum
-	  | floatlist ',' floatnum
+numberlist : number
+        | numberlist ',' number
 
-floatnum : FLOATNUM
+number  : FLOATNUM
 	 {
 	   SCALLD(AddArrayVal($1));
 	 }
-
-intnumbers : '(' intlist ')'
-
-intlist : INTNUM
+        | INTNUM
 	  {
 	    AddIntArrayVal($1);
-	  }
-	  | intlist ',' INTNUM
-	  {
-	    AddIntArrayVal($3);
-	  }
+	  } 
 
 outstatement : cdfheader ':' outlist
 	     {

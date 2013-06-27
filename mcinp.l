@@ -7,7 +7,9 @@
 #include "mcground.h"
 #include "mcparse.h"
 #include "mcprint.h"
+#include "mc_module.hh"
 #include "mcsyntax.h"
+#include "mc_group.t"
 
 Date ConvertToDate(char *t);
 
@@ -25,28 +27,6 @@ E [eE]-?[0-9]+
 \#.*$	;
 
 TITLE  return (TITLE);
-
-TIME   |
-GRID   |
-ENVIRONMENT |
-OPTIONS   |
-INITIAL-DATA |
-BORDER-DATA |
-GROUND  |
-TOP     |
-NORTH   |
-SOUTH   |
-WEST    |
-EAST    |
-CHEMISTRY   |
-EMISSIONS   |
-REDUCTION   |
-DEPOSITION  |
-NESTING     |
-OUTPUT      {
-	      AssignItem(yylval.item, yytext);
-	      return (SECTION);
-	    }
 
 CDFIMPORT   return (CDFIMPORT);
 AVG	    return (AVG);
@@ -92,12 +72,22 @@ Z	    {
 
 [A-Za-z_][0-9A-Za-z_-]*  {
 	       AssignItem(yylval.item, yytext);
-               return (IDENTIFIER);
+               {
+                 Command *tcmd;
+                 if (McInterface::mcsect.FindSection(yytext))
+                   return (SECTION);
+                 else if (tcmd = McInterface::mccommand.Find(yytext)) {
+                   yylval.command = tcmd;
+                   return (USERCOMMAND);
+                 }
+                 else
+                   return (IDENTIFIER);
+               }
              }
 
 :=	return (VARDEFINE);
 
-[\;=\[\](),:] return (*yytext);
+[\;=\[\](),:\.] return (*yytext);
 
 \.\.         return (RANGE);
 

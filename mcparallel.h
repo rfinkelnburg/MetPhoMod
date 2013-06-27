@@ -11,7 +11,12 @@ typedef enum {NODEINIT=1, TIMEDATA, GRIDDATA, OPTIONDATA, ENVDATA,
 	   CommunicationClass;
 
 typedef enum {DO_TIME_STEP, SENDGRIDVAL, SENDMESHVAL, SENDGRID,
-              SENDMESH, SENDGROUND, EXIT}  Command;
+              SENDMESH, SENDGROUND, EXIT}  ParCommand;
+
+typedef struct  {
+  int tid, firstx, nx, wfirstx, wnx;
+  long waitingtime;
+}  Worker;
 
 #define OVERLAP 2
 
@@ -20,6 +25,8 @@ extern int master, workers, parallel, myparent, leftbrother, rightbrother,
 extern BOOL leftest, rightest;
 extern char nodename[80];
 extern double *meshcache;
+
+extern Worker worker[];
 
 void IsMaster(void);
 
@@ -35,7 +42,7 @@ void SendStatus(int i);
 
 int IsPlausible(double *energy);
 
-Command GetCommand(void);
+ParCommand GetCommand(void);
 
 void GetAveragesFromWorkers(double *sum);
 

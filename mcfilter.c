@@ -94,6 +94,12 @@ void ShapiroStep(double fact, double *x, double *flx, PointStatus *pstat)
       if (!pstat[j])  x[j] += fact * flx[j];
       if (!pstat[F(nx,j)])  x[F(nx,j)] -= fact * flx[F(nxm,j)];
     }
+    if (southbordertype == CYCLIC)
+      for (i = nx; i >= 0; i--)
+	x[F(i,0)] = x[F(i,nym)];
+    if (northbordertype == CYCLIC)
+      for (i = nx; i >= 0; i--)
+	x[F(i,ny)] = x[F(i,1)];
   }
   if (ny > 3)  {
     for (i = nx+1; i--; )
@@ -110,6 +116,12 @@ void ShapiroStep(double fact, double *x, double *flx, PointStatus *pstat)
       if (!pstat[i*row])  x[i*row] += fact * flx[i*row];
       if (!pstat[F(i,ny)])  x[F(i,ny)] -= fact * flx[F(i,nym)];
     }
+    if (westbordertype == CYCLIC)
+      for (j = ny; j >= 0; j--)
+	x[j] = x[F(nxm,j)];
+    if (eastbordertype == CYCLIC)
+      for (j = ny; j >= 0; j--)
+	x[F(nx,j)] = x[F(1,j)];
   }
 }
 
@@ -193,10 +205,10 @@ void ShapiroFilter(double *x, PointStatus *pstat, int ord, double filtval)
   int i, j, loc;
   double oneminf;
   memcpy(tmplayer2, x, layer*sizeof(double));
-  if (ord--)  ShapiroStep(0.25, x, tmplayer, pstat);
-  if (ord--)  ShapiroStep(-0.25, x, tmplayer, pstat);
-  if (ord--)  ShapiroStepFour(0, x, tmplayer, pstat, 1.);
-  if (ord--)  {
+  if (ord > 0)  ShapiroStep(0.25, x, tmplayer, pstat);
+  if (ord > 1)  ShapiroStep(-0.25, x, tmplayer, pstat);
+  if (ord > 2)  ShapiroStepFour(0, x, tmplayer, pstat, 1.);
+  if (ord > 3)  {
     ShapiroStepFour(1, x, tmplayer, pstat, 1.);
     ShapiroStepFour(2, x, tmplayer, pstat, 1.);
   }

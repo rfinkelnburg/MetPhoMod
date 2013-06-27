@@ -11,6 +11,9 @@
 #include "sunpos.h"
 #include "mcground.h"
 #include "mchemparse.h"
+#ifdef PARALLEL
+#include "mcparallel.h"
+#endif
 
 #define PP(x) ((x) > 0. ? x : 0.)
 #define PM(x) ((x) < 0. ? x : 0.)
@@ -126,7 +129,20 @@ void CalcKTurb(long tinc, long chemtinc)
   int i, j, k, l, loc, hloc;
   long ltinc;
   Entity et;
-  for (i = nx; --i; )
+  int xs, xe;
+#ifdef PARALLEL
+  if (parallel && master) return; // Nothing to do in this case
+  if (parallel && !master)  {
+    xs = mfirstx + !mfirstx;
+    xe = mlastx - rightest;
+  }
+  else  {
+#endif
+    xs = 1; xe = nx;
+#ifdef PARALLEL
+  }
+#endif
+  for (i = xs; i < xe; i++)
     for (j = ny; --j; )  {
       hloc = i*row + j;
       /* Berechnung der K-Turbulenz-Matrix */
@@ -135,7 +151,8 @@ void CalcKTurb(long tinc, long chemtinc)
       loc = hloc + k*layer;
       if (groundinterface)  {
 	Kf[k] = (ground[hloc].zL > 0. ? 10. : Km[loc]) /
-	  (0.5 * (level[k] + ground[hloc].z)) * density[k];
+	  (0.5 * (level[k] + ground[hloc].z)) * 
+	  density[k];
 	/* Falls stabile Lage werden unterstes Niveau und Bodenniveau zusammengelegt.
 	   Hier mit einem rel. hohen Austauschparameter realisiert */
       }
@@ -148,7 +165,7 @@ void CalcKTurb(long tinc, long chemtinc)
         ltinc = (l ? tinc : chemtinc);
         k = ground[hloc].firstabove;
         loc = hloc + k*layer;
-        tmp = ltinc / (ground[hloc].z * density[k]);
+        tmp = ltinc / (ground[hloc].z * density[k] / ground[hloc].slope.z);
         tm[k][1] = 1. + tmp * Kf[k];
         tm[k][2] = -tmp * Kf[k];
         for (; k < nzm; k++)  {
@@ -313,7 +330,20 @@ void CalcKEpsilon(long tinc)
          tmp, tmp2, shear, boyancy, transport[MAXZGRID];
   GroundParam *gr;
   int i, j, k, hloc, loc;
-  for (i = nx; --i; )
+  int xs, xe;
+#ifdef PARALLEL
+  if (parallel && master) return; // Nothing to do in this case
+  if (parallel && !master)  {
+    xs = mfirstx + !mfirstx;
+    xe = mlastx - rightest;
+  }
+  else  {
+#endif
+    xs = 1; xe = nx;
+#ifdef PARALLEL
+  }
+#endif
+  for (i = xs; i < xe; i++)
     for (j = ny; --j; )  {
       hloc = i*row + j;
       gr = ground + hloc;

@@ -28,7 +28,11 @@ typedef struct BorderTimeDesc  {
   VarDesc actualvar, nextvar;
   long *timetable;
   size_t coords[5], *dimptr[5];
-  double *actualdata, *nextdata;
+  union {
+    double *d;
+    GroundParam *g;
+  } actualdata;
+  double *nextdata;
   struct BorderTimeDesc *next;
 }  BorderTimeDesc;
 
@@ -58,7 +62,7 @@ void SendBorderTime(BOOL leftest, BOOL rightest)
     pvm_pkint(&bt->itime, 1, 1);
     pvm_pkint(&bt->cdfid, 1, 1);
     pvm_pkint(&bt->vid, 1, 1);
-    pvm_pkstr(bt->actualvar.name);
+    pvm_pkstr((char *)bt->actualvar.name);
     pvm_pkint((int *)&bt->actualvar.v.et, 1, 1);
     pvm_pkushort(&bt->actualvar.dims, 1, 1);
     pvm_pkint((int *)&bt->actualvar.storetype, 1, 1);
@@ -103,7 +107,7 @@ void RecvBorderTime(void)
     pvm_upkint((int *)&bt->nextvar.storetype, 1, 1);
     bt->timetable = (long *)malloc(bt->ntime * sizeof(long));
     pvm_upklong(bt->timetable, bt->ntime, 1);
-    pvm_upkuint(bt->coords, 4, 1);
+    pvm_upkuint((uint *)bt->coords, 4, 1);
     for (i = 0; i < 4; i++)  {
       pvm_upkint(&dff, 1, 1);
       bt->dimptr[i] = bt->coords + dff;
@@ -136,6 +140,7 @@ void RecvBorderTime(void)
 	 mem = row*nz;
 	 break;
       case LAYER_VAR :
+      case GROUND_VAR :
 	 mem = layer;
 	 break;
       case PROFILE_VAR :
@@ -148,7 +153,7 @@ void RecvBorderTime(void)
 	 mem = bt->actualvar.ncoord;
 	 break;
     }
-    bt->actualdata = bt->actualvar.v.d;
+    bt->actualdata.d = bt->actualvar.v.d;
     bt->nextdata = (double *)calloc(mem, sizeof(double));
     bt->nextvar.v.d = bt->nextdata;
     bt->nextvar.ncoord = bt->actualvar.ncoord;
@@ -195,72 +200,62 @@ int ReadVarFromCDF(int cdfid, int vid, VarDesc *v, size_t **d, size_t *coords, B
   offs = !startoff && !bigdim;
   startloop = !startoff && bigdim;
   switch (v->storetype)  {
-    case GRID_VAL :
-       if (!g[v->v.et])  g[v->v.et] = (double *)calloc(mesh, sizeof(double));
-       for (*d[2] = 0; *d[2] < nz; (*d[2])++)
-         for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
-           for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
-             NCGET(g[v->v.et][F(*d[2],*d[0]+offs,*d[1]+offs)]);
-       break;
-    case LAYER_PTR :
-       if (v->dims != ALL_DIM)  {
-         InputError(ERROR, "Internal implementation error (3)");
-         return (1);
-       }
-       for (*d[2] = 0; *d[2] < nz; (*d[2])++)
-         for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
-           for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
-             NCGET(v->v.d[F(*d[2],*d[0]+offs,*d[1]+offs)]);
-       break;
-    case FILE_PTR :
-       switch (v->dims)  {
-         case (X_DIM | Y_DIM) :
-            for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
-              for (*d[1] = 0; *d[1] < lny; (*d[1])++)
-                NCGET(v->v.d[FH(*d[0]+offs,*d[1]+offs)]);
-            break;
-         case (Y_DIM | Z_DIM) :
-            for (*d[2] = 0; *d[2] < nz; (*d[2])++)
-              for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
-                NCGET(v->v.d[FH(*d[2],*d[1]+offs)]);
-            break;
-         default : InputError(ERROR, "Internal implementation error (2)");
-                   break;
-       }
-       break;
-    case XFILE_PTR :
-       for (*d[2] = 0; *d[2] < nz; (*d[2])++)
-	 for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
-	   NCGET(v->v.d[*d[2] * xrow + *d[0]+offs]);
-       break;
-    case DOUBLE_PTR :
-       switch (v->dims)  {
-         case X_DIM : for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
-           		NCGET(v->v.d[*d[0]+offs]);
-           	      break;
-         case Y_DIM : for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
-           		NCGET(v->v.d[*d[1]+offs]);
-                      break;
-         case Z_DIM : for (*d[2] = 0; *d[2] < nz; (*d[2])++)
-           		NCGET(v->v.d[*d[2]]);
-           	      break;
-         case COUNT_DIM :
-                      for (*d[4] = 0; *d[4] < v->ncoord; (*d[4])++)
-                        NCGET(v->v.d[*d[4]]);
-                      break;
-         case 0     : NCGET(*v->v.d); break;
-         default : InputError(ERROR, "Internal implementation error (1)");
-           	   return (1);
-       }
-       break;
-    case GROUND_PARAM :
-       for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
-         for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
-           NCGET(v->v.g[(*d[0]+offs)*row+*d[1]+offs].Tg[0]);
-       break;
-    default :
-       InputError(ERROR, "Variable %s cannot be set via CDF-File. (Wrong-Type)", v->name);
-       return (1);
+  case GRID_VAL :
+    if (!g[v->v.et])  g[v->v.et] = (double *)calloc(mesh, sizeof(double));
+    for (*d[2] = 0; *d[2] < nz; (*d[2])++)
+      for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
+	for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
+	  NCGET(g[v->v.et][F(*d[2],*d[0]+offs,*d[1]+offs)]);
+    break;
+  case DOUBLE_PTR :
+    switch (v->dims)  {
+    case (ALL_DIM) :
+      for (*d[2] = 0; *d[2] < nz; (*d[2])++)
+	for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
+	  for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
+	    NCGET(v->v.d[F(*d[2],*d[0]+offs,*d[1]+offs)]);
+      break;
+    case (X_DIM | Y_DIM) :
+      for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
+	for (*d[1] = 0; *d[1] < lny; (*d[1])++)
+	  NCGET(v->v.d[FH(*d[0]+offs,*d[1]+offs)]);
+      break;
+    case (Y_DIM | Z_DIM) :
+      for (*d[2] = 0; *d[2] < nz; (*d[2])++)
+	for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
+	  NCGET(v->v.d[FH(*d[2],*d[1]+offs)]);
+      break;
+    case (X_DIM | Z_DIM) :
+      for (*d[2] = 0; *d[2] < nz; (*d[2])++)
+	for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
+	  NCGET(v->v.d[*d[2] * xrow + *d[0]+offs]);
+      break;
+    case X_DIM : for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
+      NCGET(v->v.d[*d[0]+offs]);
+    break;
+    case Y_DIM : for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
+      NCGET(v->v.d[*d[1]+offs]);
+    break;
+    case Z_DIM : for (*d[2] = 0; *d[2] < nz; (*d[2])++)
+      NCGET(v->v.d[*d[2]]);
+    break;
+    case COUNT_DIM :
+      for (*d[4] = 0; *d[4] < v->ncoord; (*d[4])++)
+	NCGET(v->v.d[*d[4]]);
+      break;
+    case 0     : NCGET(*v->v.d); break;
+    default : InputError(ERROR, "Internal implementation error (2)");
+      break;
+    }
+    break;
+  case GROUND_PARAM :
+    for (*d[0] = startloop; *d[0] < lnx; (*d[0])++)
+      for (*d[1] = startloop; *d[1] < lny; (*d[1])++)
+	NCGET(v->v.g[(*d[0]+offs)*row+*d[1]+offs].Tg[0]);
+    break;
+  default :
+    InputError(ERROR, "Variable %s cannot be set via CDF-File. (Wrong-Type)", v->name);
+    return (1);
   }
   return (0);
 }
@@ -349,9 +344,9 @@ int ReadCDFFile(char *name, InputSection section)
     if (v)  {
       vo = v;
       if (v->storetype == GRID_VAL &&
-	  actualsection >= NORTH_BORDER && actualsection <= EAST_BORDER)
+	  actualsection->id >= NORTH_BORDER && actualsection->id <= EAST_BORDER)
 	v = BorderVariable(v, &vh);
-      if (v->storetype == GRID_VAL && actualsection == EMISSIONS)  {
+      if (v->storetype == GRID_VAL && actualsection->id == EMISSIONS)  {
         pointvalues = (ndim < 3 && (dimdim[*dim] == 4 || dimdim[dim[1]] == 4) ? *dimtab[4].size : 0);
 	if (pointvalues && !coord)  coord = AllocateCoordVar(pointvalues);
         v = EmissionVariable(v, pointvalues, 0, coord);
@@ -388,7 +383,7 @@ int ReadCDFFile(char *name, InputSection section)
 	memset(dimptr, 0, 5 * sizeof(*dimptr));
 	for (j = ndim; --j >= 0 && dimdim[dim[j]] != 3; );
 	if (timedvar = j >= 0)  {
-	  if (actualsection < ENVIRONMENT || actualsection == INITIAL_DATA)  {
+	  if (actualsection->id < ENVIRONMENT || actualsection->id == INITIAL_DATA)  {
 	    InputError(ERROR, "Time-dependent variables are not allowed in this section.");
 	    goto error_end;
 	  }
@@ -399,7 +394,7 @@ int ReadCDFFile(char *name, InputSection section)
 	  else if (v->dims == (Y_DIM | Z_DIM))
 	    bt->vartype = WALL_VAR;
 	  else if (v->dims == (X_DIM | Y_DIM))
-	    bt->vartype = LAYER_VAR;
+	    bt->vartype = (v->storetype == GROUND_PARAM ? GROUND_VAR : LAYER_VAR);
 	  else if (v->dims == Z_DIM)
 	    bt->vartype = PROFILE_VAR;
 	  else if (v->dims == ALL_DIM)
@@ -410,7 +405,7 @@ int ReadCDFFile(char *name, InputSection section)
 	    InputError(ERROR, "The variable \"%s\" must not be time-dependent.", v->name);
 	    goto error_end;
 	  }
-	  bt->section = actualsection;
+	  bt->section = InputSection(actualsection->id);
 	  bt->bigdim = bigdim;
 	  bt->ntime = ntimes;
 	  bt->itime = -1;
@@ -421,7 +416,7 @@ int ReadCDFFile(char *name, InputSection section)
 	  bt->nextvar = *v;
 	  bt->timetable = timetable;
 	  coords = bt->coords;
-	  bt->actualdata = v->v.d;
+	  bt->actualdata.d = v->v.d;
 	  switch (bt->vartype)  {
 	    case XWALL_VAR :
 	       mem = xrow*nz;
@@ -429,6 +424,8 @@ int ReadCDFFile(char *name, InputSection section)
 	    case WALL_VAR :
 	       mem = row*nz;
 	       break;
+	    case GROUND_VAR :
+	       bt->nextvar.storetype = DOUBLE_PTR;
 	    case LAYER_VAR :
 	       mem = layer;
 	       break;
@@ -523,7 +520,7 @@ void InitCDFInit(void)
 
 void ActualiseValuesInTime(long actime)
 {
-  double ti;
+  double ti, *dp;
   BorderTimeDesc *bt;
   int i, dtime;
   for (bt = bordertime; bt; bt = bt->next)  {
@@ -536,6 +533,7 @@ void ActualiseValuesInTime(long actime)
 	   i = xrow*nz;
 	   break;
 	case LAYER_VAR :
+        case GROUND_VAR :
 	   i = layer;
 	   break;
 	case PROFILE_VAR :
@@ -550,8 +548,12 @@ void ActualiseValuesInTime(long actime)
       }
       if (actime < bt->timetable[bt->itime+1])  {
         dtime = actime - bt->actime;
-        while (i--)
-          bt->actualdata[i] += dtime * bt->nextdata[i];
+	if (bt->vartype == GROUND_VAR)
+	  while (i--)
+	    bt->actualdata.g[i].Tg[0] += dtime * bt->nextdata[i];
+	else
+	  while (i--)
+	    bt->actualdata.d[i] += dtime * bt->nextdata[i];
         bt->actime = actime;
       }
       else  {
@@ -563,11 +565,16 @@ void ActualiseValuesInTime(long actime)
             ReadVarFromCDF(bt->cdfid, bt->vid, &bt->actualvar, bt->dimptr, bt->coords, bt->bigdim);
 	    if (bt->vartype == COORD_VAR)
 	      PackCoordVariable(&bt->actualvar);
+	    else if (bt->vartype == GROUND_VAR)
+	      SendGroundToWorkers();
 	    else
 	      PackVariable(bt->actualvar.v.d, bt->vartype, bt->section);
           }
           else  {
-            UnpackVariable(bt->actualvar.v.d);
+	    if (bt->vartype == GROUND_VAR)
+	      GetGroundFromMaster();
+	    else
+	      UnpackVariable(bt->actualvar.v.d);
           }
         else
 #endif
@@ -593,8 +600,9 @@ void ActualiseValuesInTime(long actime)
 	  ti = 1. / (double)dtime;
 	  dtime = actime - bt->timetable[bt->itime];
 	  while (i--)  {
-            bt->nextdata[i] = (bt->nextdata[i] - bt->actualdata[i]) * ti;
-	    bt->actualdata[i] += dtime * bt->nextdata[i];
+	    dp = &(bt->vartype == GROUND_VAR ? bt->actualdata.g[i].Tg[0] : bt->actualdata.d[i]);
+            bt->nextdata[i] = (bt->nextdata[i] - *dp) * ti;
+	    *dp  += dtime * bt->nextdata[i];
 	  }
 	  bt->actime = actime;
         }

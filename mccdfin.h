@@ -6,7 +6,7 @@
 #define MCCDFIN
 
 typedef enum
-   {WALL_VAR, XWALL_VAR, LAYER_VAR, PROFILE_VAR, MESH_VAR, COORD_VAR}  BorderVarType;
+   {WALL_VAR, XWALL_VAR, LAYER_VAR, PROFILE_VAR, MESH_VAR, COORD_VAR, GROUND_VAR}  BorderVarType;
 
 int ReadCDFFile(char *name, InputSection section);
 

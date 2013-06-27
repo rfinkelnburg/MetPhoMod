@@ -1,31 +1,4 @@
 /*
-
-   This file is a part of
-
-   MetPhoMod v2.0, the comprehensive three dimensional, prognostic
-		   mesoscale atmospheric summer smog model.
-
-   Copyright (C) 1996-1999, Silvan Perego
-
-
-   This program is free software; you can redistribute it and/or
-   modify it under the terms of the GNU General Public License
-   as published by the Free Software Foundation; either version 2
-   of the License, or (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, refer to the WEB page
-
-   http://www.gnu.org/copyleft/gpl.html
-
-*/
-
-/*
    IMPLEMENTATION MODULE Sonne
 */
 
@@ -60,6 +33,7 @@
 #include "sunpos.h"
 
 #define		TRUE 1
+#undef FALSE
 #define		FALSE !TRUE
 
 extern double Pi;
@@ -68,62 +42,30 @@ double S0 = 1376.;
 
 extern double sqr(double x);
 
-double Declination(int day)
-/* day: Julian Day of the year		*/
-{
-  double de;
-  de = (-23.4683 * cos(((0.9856 * (day)) + 9.3)*Pi/180.));
-  de *= (Pi/180.);	/* Converting degrees to radians	*/
-  return (de);
-}
-
-double EquationOfTime(int day)
-/* day: Julian Day of the year		*/
-{
-  double thetanull, zg, argu;
-  zg = (0.018-0.413*cos(0.017167173*day)+3.4925*cos(0.034334345*day) +
-    0.1019*cos(0.051501519*day)+7.3057*sin(0.017167173*day) +
-    9.3014*sin(0.034334345*day)+0.3256*sin(0.051501519*day)) * Pi / 180.;
-  return(zg);
-}
-
-double SolarTime(int day, double localtime, double longitude, double timezonediff)
-/* day: 	Julian Day of the year		*/
-/* localtime:	Local time in hours		*/
-/* longitude:	Longitude in degrees		*/
-/* timezonediff:Difference of time zone in hours*/
-{
-  double zg, st;
-  zg = EquationOfTime(day);
-  zg *= 12. / Pi;
-  st = localtime - timezonediff + zg + longitude/15.;
-  return(st);	/* Solar Time in UTC	*/
-}
-
-double HourAngle(int day, double localtime, double longitude, double timezonediff)
-/* day: 	Julian Day of the year		*/
-/* localtime:	Local time in hours		*/
-/* longitude:	Longitude in degrees		*/
-/* timezonediff:Difference of time zone in hours*/
-{
-  double sw;
-  sw = (SolarTime(day, localtime, longitude, timezonediff) - 12.) * 15.;
-  sw *= (Pi/180.);	/* Converting degrees to radians	*/
-			/* The Hour Angle of the Sun is		*/
-			/* relative to the South Direction!	*/
-  return(sw);
-}
-
 void SunVector(Vector *s, int day, double localtime,
                double longitude, double latitude, double timezonediff)
 /* s:	resulting Sun Unity Vector	*/
 /* day:	Julian Day of the year		*/
 {
-  double ds, t;
-  double lat;
-  ds = Declination(day);
-  t = HourAngle(day,localtime,longitude,timezonediff);
-  lat = latitude * Pi/180.;
+  double ds, t, sintz, costz, sin2tz, cos2tz, sin3tz, cos3tz;
+  double lat, eqr, jd;
+  const double dr = Pi / 180.;
+  jd = 2.*Pi*(day - 1 + (localtime - timezonediff) / 24.) / 365.;
+  sintz = sin(jd);
+  costz = cos(jd);
+  sin2tz = 2.*sintz*costz;
+  cos2tz = costz*costz-sintz*sintz;
+  sin3tz = sintz*cos2tz + costz*sin2tz;
+  cos3tz = costz*cos2tz - sintz*sin2tz;
+  ds = 0.006918 - 0.399912*costz  + 0.070257*sintz -
+    0.006758*cos2tz + 0.000907*sin2tz -
+    0.002697*cos3tz + 0.001480*sin3tz;
+
+  eqr   = (0.000075 + 0.001868*costz  - 0.032077*sintz
+    - 0.014615*cos2tz - 0.040849*sin2tz) * 12 / Pi;
+
+  t = dr * (15 * (localtime - 12. + eqr - timezonediff) + longitude);
+  lat = latitude * dr;
   /* local vector to the sun	*/
   s->x = -cos(ds) * sin(t);
   s->y = -cos(ds) * cos(t) * sin(lat) + sin(ds) * cos(lat);
@@ -140,7 +82,7 @@ void TopoVector(Vector *s, double exposition, double slopeangle)
   s->z = cos(slopeangle);
 }
 
-double AngleBetween(Vector *s, Vector *t)
+double AngleBetween(const Vector *s, const Vector *t)
 {
   double zenithangle;
   zenithangle = (s->x*t->x + s->y*t->y + s->z*t->z) /

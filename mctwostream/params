@@ -1,0 +1,40 @@
+* BROADLY USED PARAMETERS:
+*_________________________________________________
+* i/o file unit numbers
+      INTEGER kout, kin 
+* output
+      PARAMETER(kout=53)
+* input
+      PARAMETER(kin=12)
+*_________________________________________________
+* altitude, wavelength grids
+      INTEGER kz, kw
+* altitude
+      PARAMETER(kz=200)
+* wavelength
+      PARAMETER(kw=300)
+*_________________________________________________
+* number of weighting functions
+      INTEGER ks, kj
+*  wavelength dependent
+      PARAMETER(ks=40)
+*  wavelength and altitude dependent
+      PARAMETER(kj=50)
+
+* delta for adding points at beginning or end of data grids
+      DOUBLE PRECISION deltax
+      PARAMETER (deltax = 1.E-4)
+
+* some constants...
+
+* pi:
+      DOUBLE PRECISION pi
+      PARAMETER(pi=3.1415926535898)
+
+* radius of the earth:
+      DOUBLE PRECISION radius
+      PARAMETER(radius=6.371E+3)
+
+* largest number of the machine:
+      DOUBLE PRECISION largest
+      PARAMETER(largest=1.E+36)
