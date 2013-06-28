@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <iostream.h>
+#include <iostream>
 #include "mcground.h"
 #include "mc_group.hh"
 #include "mcparse.h"
