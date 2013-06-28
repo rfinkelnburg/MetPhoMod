@@ -21,7 +21,7 @@ $(OBJDIR)/%.o : %.f
 	$(F77) -c $(FFLAGS) $(GENFLAGS) $*.f -o $@
 
 libtwostream.a : $(OBJS)
-	ar -r $(OBJDIR)/libmctwostream.a $(OBJS)
+	ar cr libmctwostream.a $(OBJS)
 
 depend :
 	makedepend -I.. -p'$$(OBJDIR)/' $(SRC)
