@@ -37,7 +37,9 @@ debugp :
 
 CC=g++
 INCLUDE=-I. -I/usr/local/include -I/home/perego/pvm3/include
-CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DLINUX -fno-implicit-templates
+CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DLINUX -fno-implicit-templates -fpermissive
+
+$(OBJDIR)/mchelp.o: mcsyntax.incl
 
 #vvvvvvvvvvvvvvvvvvvvvvv replace these lines vvvvvvvvvvvvvvvvvvvvvvv
 
