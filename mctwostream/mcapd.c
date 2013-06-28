@@ -4,7 +4,7 @@
 */
 
 #include "mcapd.h"
-#include <stddef.h>
+#include <cstddef>
 #include <stdio.h>
 #include <stdlib.h>
 #include "../mc_group.t"

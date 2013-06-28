@@ -1,5 +1,5 @@
-#include <stddef.h>
-#include <iostream.h>
+#include <cstddef>
+#include <iostream>
 
 template <class T> class Holder {
 public :
@@ -63,7 +63,7 @@ void Group<T>::Unregister(const T *v)
       delete h;
     }
     else {
-      cerr << "Implementation error: Variable can not be unregistered!\n";
+      std::cerr << "Implementation error: Variable can not be unregistered!\n";
       exit (3);
     }
   }

@@ -20,10 +20,10 @@ public :
   const char *name;  // Must be global for group-template
   // creator
   PhotoDissReact(AllPhotoDiss *apd, const char *name_in);
-  virtual void Setup(int nwl, const double *wl, int nz) = NULL;
+  virtual void Setup(int nwl, const double *wl, int nz) = 0;
   virtual void SetCol(int serialid, const double *tabs, const double *airc);
     // Default is: Do nothing!
-  virtual double CalcRate(const double *flux, int k) const = NULL;
+  virtual double CalcRate(const double *flux, int k) const = 0;
 };
 
 class AllPhotoDiss {

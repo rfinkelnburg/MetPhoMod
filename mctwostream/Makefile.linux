@@ -7,7 +7,7 @@ OBJS= $(OBJDIR)/mctwostream.o $(OBJDIR)/mcphotodiss.o \
 SRC= mcphotodiss.c mctwostream.c mcabsorb.c mcextrad.c mcapd.c
 
 CC=g++
-F77=g77
+F77=f77
 
 CFLAGS2=-I..
 
