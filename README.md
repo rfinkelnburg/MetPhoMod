@@ -8,4 +8,5 @@ Installing on Debian / Ubuntu
     $ ln -nfs Makefile.linux Makefile
     $ ln -nfs Makefile.linux mctwostream/Makefile
     $ (cd mctwostream; make depend && make libtwostream.a OBJDIR=.)
+    $ make depend
     $ make optp
