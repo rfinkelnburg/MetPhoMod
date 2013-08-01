@@ -19,7 +19,7 @@ optp :
 	- rm -f .debug
 	touch .nodebug
 	(cd mctwostream && make libmctwostream.a)
-	make parallel FFLAGS=-O3 CFLAGS="-O2 -ffast-math -I. -I/usr/local/include -I/home/perego/pvm3/include -DLINUX -DPARALLEL -DSYSTEM=\\\""`uname`"\\\" -DDATE=\\\""`date +%D`"\\\" "$(DEFS) \
+	make parallel FFLAGS=-O3 CFLAGS="-O2 -ffast-math -I. -I/usr/local/include -DLINUX -DPARALLEL -DSYSTEM=\\\""`uname`"\\\" -DDATE=\\\""`date +%D`"\\\" "$(DEFS) \
 	   STRIP=strip ARCH=LINUX
 
 debug :
@@ -31,7 +31,7 @@ debug :
 debugp :
 	- rm -f .debug
 	touch .nodebug
-	make parallel FFLAGS=-g CFLAGS="-g -I. -I/usr/local/include -I/home/perego/pvm3/include -DLINUX -DPARALLEL -DSYSTEM=\\\""`uname`"\\\" -DDATE=\\\""`date +%D`"\\\" "$(DEFS) \
+	make parallel FFLAGS=-g CFLAGS="-g -I. -I/usr/local/include -DLINUX -DPARALLEL -DSYSTEM=\\\""`uname`"\\\" -DDATE=\\\""`date +%D`"\\\" "$(DEFS) \
 	   STRIP=ls ARCH=LINUX
 
 clean :
@@ -42,7 +42,7 @@ clean :
 # debug:=CFLAGS=-g -I/opt/include
 
 CC=g++
-INCLUDE=-I. -I/usr/local/include -I/home/perego/pvm3/include
+INCLUDE=-I. -I/usr/local/include
 CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DLINUX -fpermissive
 
 OBJDIR?= .
@@ -93,7 +93,7 @@ $(OBJDIR)/%.o : %.f
 	f77 -c $(FFLAGS) $*.f -o $@
 
 parallel : $(OBJS) $(OBJDIR)/mcparallel.o 
-	$(CC)  $(OBJS) $(OBJDIR)/mcparallel.o -L/usr/local/lib -L/home/perego/pvm3/lib/$(ARCH) \
+	$(CC)  $(OBJS) $(OBJDIR)/mcparallel.o -L/usr/local/lib \
 	    -lm -lnetcdf -lpvm3 $(LIBS) -lf2c -o meteochem
 	$(STRIP) meteochem
 
