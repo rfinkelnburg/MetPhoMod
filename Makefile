@@ -43,7 +43,7 @@ clean :
 
 CC=g++
 INCLUDE=-I. -I/usr/local/include -I/home/perego/pvm3/include
-CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DLINUX -fno-implicit-templates -fpermissive
+CFLAGS2=-DSYSTEM=\"`uname`\" -DDATE=\"`date +%D`\" -DLINUX -fpermissive
 
 OBJDIR?= .
 
