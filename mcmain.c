@@ -36,6 +36,11 @@
 #endif
 #include "mc_module.hh"
 
+extern "C" {
+// f2c requires this
+int  MAIN__( ) {  return 0; }
+}
+
 typedef enum {RESTART = 1, NOEXCPT = 2, SYNTAX_ONLY = 4, REOPEN = 8,
               NO_OUTPUT = 16, DEBUG_WORKERS = 32, SEQUENTIAL = 64}  RunningFlags;
 

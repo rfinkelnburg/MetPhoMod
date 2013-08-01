@@ -10,6 +10,7 @@ mchemsyntax.h
 mcsyntax.c
 mcsyntax.h
 mcsyntax.incl
+meteochem
 
 # dunno...
 .nodebug
