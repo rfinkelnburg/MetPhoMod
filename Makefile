@@ -115,14 +115,12 @@ mcsyntax.incl : mcsyntax.y
 	sed '1,/%%/d;/{/,/}$$/d;/%%/,$$d;/^$$/d;s/\;$$//;s/^/\"/;s/$$/\\n\"/' mcsyntax.y > mcsyntax.incl
 
 mchemsyntax.c mchemsyntax.h : mchemsyntax.y
-	bison -y -d mchemsyntax.y
-	sed 's/yy/chi/g' y.tab.c > mchemsyntax.c
-	rm y.tab.c
-	sed 's/yy/chi/g' y.tab.h > mchemsyntax.h
-	rm y.tab.h
+	bison -p chi -d mchemsyntax.y
+	mv mchemsyntax.tab.c mchemsyntax.c
+	mv mchemsyntax.tab.h mchemsyntax.h
 
-mcheminp.c : mcheminp.l
-	flex -P chi -+ -o $@ $<
+mcheminp.c mcheminp.h : mcheminp.l
+	flex -P chi --header-file=$*.h -o $*.c $<
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 

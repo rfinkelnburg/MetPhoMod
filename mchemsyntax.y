@@ -8,7 +8,7 @@
 #include "mchemparse.h"
 #include "mctwostream/mctwostream.h"
 
-int chilex(void);
+extern int chilex();
 
 %}
 
