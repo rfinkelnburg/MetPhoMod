@@ -85,16 +85,16 @@ $(OBJDIR)/%.o : %.f
 	f77 -c $(FFLAGS) $*.f -o $@
 
 parallel : $(OBJS) $(OBJDIR)/mcparallel.o 
-	f77  $(OBJS) $(OBJDIR)/mcparallel.o -L/usr/local/lib -L/home/perego/pvm3/lib/$(ARCH) \
-	    -lm -lnetcdf -lpvm3 -lg++ $(LIBS) -o meteochem
+	$(CC)  $(OBJS) $(OBJDIR)/mcparallel.o -L/usr/local/lib -L/home/perego/pvm3/lib/$(ARCH) \
+	    -lm -lnetcdf -lpvm3 $(LIBS) -lf2c -o meteochem
 	$(STRIP) meteochem
 
 meteochem : $(OBJS) $(LIBS)
-	f77 $(OBJS) -L/usr/local/lib -lm -lnetcdf -lg++ $(LIBS) -o meteochem
+	$(CC) $(OBJS) -L/usr/local/lib -lm -lnetcdf $(LIBS) -lf2c -o meteochem
 	$(STRIP) meteochem
 
 mcinp.c : mcinp.l
-	flex -+ -t mcinp.l | sed 's/yy/mci/g' > mcinp.c
+	flex -P mci -+ -o $@ $<
 
 mcsyntax.c mcsyntax.h : mcsyntax.y
 	bison -y -d mcsyntax.y
@@ -114,7 +114,7 @@ mchemsyntax.c mchemsyntax.h : mchemsyntax.y
 	rm y.tab.h
 
 mcheminp.c : mcheminp.l
-	flex -+ -t mcheminp.l | sed 's/yy/chi/g' > mcheminp.c
+	flex -P chi -+ -o $@ $<
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 

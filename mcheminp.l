@@ -99,13 +99,13 @@ refs       {
 
 press      {
 	     strcpy(lasttoken, yytext);
-	     yylval.dref = &reference.press;
+	     chilval.dref = &reference.press;
 	     return (A_REF);
 	   }
 
 temp      {
 	     strcpy(lasttoken, yytext);
-	     yylval.dref = &reference.T;
+	     chilval.dref = &reference.T;
 	     return (A_REF);
 	   }
 
@@ -128,20 +128,20 @@ END  	   {
 -?{D}\.{D}{E} |
 -?{DM}{E} |
 -{DM}        {
-	       yylval.dval = atof(yytext);
+	       chilval.dval = atof(yytext);
 	       strcpy(lasttoken, yytext);
                return (FLOATNUM);
              }
 
 [1-9]{D}   |
 0            {
-	       yylval.ival = atoi(yytext);
+	       chilval.ival = atoi(yytext);
 	       strcpy(lasttoken, yytext);
 	       return (INTNUM);
 	     }
 
 [A-Za-z_][0-9A-Za-z_]*  {
-			 yylval.item = yysubstname;
+			 chilval.item = yysubstname;
 	       		 strcpy(lasttoken, yytext);
 	       		 if ((int)strlen(yytext) >= TOKENLEN)  {
     			   fprintf(stderr, 
@@ -166,12 +166,12 @@ END  	   {
 
 [ \t]+	;
 
-\n	lineno++;
+\n	yylineno++;
 
 \".*\"	    {
-	      yylval.item = (char *)malloc(strlen(yytext) - 1);
-	      strncpy(yylval.item, yytext + 1, strlen(yytext) - 2);
-	      yylval.item[strlen(yytext)-2] = 0;
+	      chilval.item = (char *)malloc(strlen(yytext) - 1);
+	      strncpy(chilval.item, yytext + 1, strlen(yytext) - 2);
+	      chilval.item[strlen(yytext)-2] = 0;
 	      return (STRING);
 	    }
 

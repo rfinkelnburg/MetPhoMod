@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <iostream>
+#include <mc_group.hh>
 
 template <class T> class Holder {
 public :
