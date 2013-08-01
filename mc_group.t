@@ -1,4 +1,6 @@
 #include <cstddef>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 template <class T> class Holder {
@@ -64,7 +66,7 @@ void Group<T>::Unregister(const T *v)
     }
     else {
       std::cerr << "Implementation error: Variable can not be unregistered!\n";
-      exit (3);
+      std::exit (3);
     }
   }
 }
@@ -81,7 +83,7 @@ template <class T>
 T *Group<T>::Find(const char *name) const
 {
   Holder<T> *p;
-  for (p = first; p && strcmp(name, p->v->name); p = p->next);
+  for (p = first; p && std::strcmp(name, p->v->name); p = p->next);
   if (p)  return (p->v);
   else    return (NULL);
 }

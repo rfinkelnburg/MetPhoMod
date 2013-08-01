@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include "../mc_group.t"
 
+template class Group<PhotoDissReact>;
+
 PhotoDissReact::PhotoDissReact(AllPhotoDiss *apd, const char *name_in)
 {
   name = name_in;

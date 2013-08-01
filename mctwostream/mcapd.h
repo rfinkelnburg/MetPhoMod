@@ -8,9 +8,9 @@
 
 #include <stddef.h>
 
-#ifndef INCLUDE_MC_GROUP
+//#ifndef INCLUDE_MC_GROUP
 #include "mc_group.hh"
-#endif
+//#endif
 
 class AllPhotoDiss;
 
